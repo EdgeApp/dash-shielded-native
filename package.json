@@ -1,0 +1,12 @@
+{
+  "name": "dash-shielded-native",
+  "version": "0.0.1",
+  "description": "Native Dash Platform shielded wallet library for React Native and Node.js",
+  "homepage": "https://github.com/EdgeApp/dash-shielded-native",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:EdgeApp/dash-shielded-native.git"
+  },
+  "license": "MIT",
+  "author": "Airbitz, Inc."
+}

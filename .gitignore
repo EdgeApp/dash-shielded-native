@@ -1,0 +1,13 @@
+# Build output:
+/android/build/
+/android/src/main/jniLibs/
+/ios/libdashshielded.xcframework/
+/rust/Generated/
+/tmp/
+
+node_modules/
+lib/
+prebuilds/
+rust/target/
+*.tgz
+.DS_Store

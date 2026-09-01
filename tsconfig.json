@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "declaration": true,
+    "declarationDir": "lib",
+    "emitDeclarationOnly": true,
+
+    "esModuleInterop": true,
+    "lib": ["es2015"],
+    "module": "es2015",
+    "moduleResolution": "node",
+    "skipLibCheck": true,
+    "target": "es2015",
+
+    "strict": true
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "lib", "node.d.ts", "scripts", "rust"]
+}

@@ -436,6 +436,17 @@ pub async fn initialize(
         .ok_or("shielded_default_address returned none (bind_shielded did not take)")?;
     let address = encode_raw_orchard_address(&raw, &network_name)?;
 
+    if std::env::var("DASH_SHIELDED_DEBUG").is_ok() {
+        // Same mnemonic, both derivations, one process: the stub's local
+        // ZIP-32 path versus what bind_shielded produced.
+        match derive_address_and_fvk(&mnemonic_seed, &network_name, account) {
+            Ok((local, _)) => eprintln!("[dash-shielded] local-derived  = {local}"),
+            Err(e) => eprintln!("[dash-shielded] local derive failed: {e}"),
+        }
+        eprintln!("[dash-shielded] bind-derived  = {address}");
+        eprintln!("[dash-shielded] seed len = {}", shielded_seed.len());
+    }
+
     let viewing_key = derive_address_and_fvk(&mnemonic_seed, &network_name, account)
         .map(|(_a, fvk)| fvk)
         .unwrap_or_default();
@@ -490,6 +501,23 @@ pub async fn start_sync(alias: String) -> WalletResult<()> {
     tokio::spawn(async move {
         if let Some(coordinator) = manager.shielded_coordinator().await {
             let summary = coordinator.sync(true).await;
+            if std::env::var("DASH_SHIELDED_DEBUG").is_ok() {
+                eprintln!("[dash-shielded] sync summary: {summary:?}");
+                // Local tree size vs what the pass walked: if the chain has
+                // more leaves than we hold, the fetch is stopping short.
+                if let Some(coord) = manager.shielded_coordinator().await {
+                    if let Ok(store) = coord.store().try_read() {
+                        let sub = wallet_for_task
+                            .as_ref()
+                            .map(|w| SubwalletId::new(w.wallet_id(), 0));
+                        eprintln!(
+                            "[dash-shielded] tree_size={:?} watermark={:?}",
+                            store.tree_size(),
+                            sub.map(|id| store.last_synced_note_index(id)),
+                        );
+                    }
+                }
+            }
             // Record what the pass actually did, so `poll` reports a real
             // scan rather than an assumed one.
             let mut scanned = 0u64;

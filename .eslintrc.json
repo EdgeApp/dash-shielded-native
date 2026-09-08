@@ -4,7 +4,7 @@
     "standard-kit/prettier/typescript"
   ],
   "parserOptions": {
-    "project": "tsconfig.json"
+    "project": "tsconfig.eslint.json"
   },
   "plugins": [
     "simple-import-sort"
@@ -12,6 +12,6 @@
   "rules": {
     "@typescript-eslint/promise-function-async": "off",
     "no-var": "error",
-    "simple-import-sort/sort": "error"
+    "simple-import-sort/imports": "error"
   }
 }

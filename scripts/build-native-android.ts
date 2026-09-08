@@ -28,7 +28,7 @@ function run(
     child.on('error', reject)
     child.on('exit', code => {
       if (code === 0) resolve()
-      else reject(new Error(`${cmd} ${args.join(' ')} exited ${code}`))
+      else reject(new Error(`${cmd} ${args.join(' ')} exited ${String(code)}`))
     })
   })
 }
@@ -42,6 +42,7 @@ async function patchKotlinErrorField(path: string): Promise<void> {
   const source = await readFile(path, 'utf8')
   const patched = source
     .replace(
+      // eslint-disable-next-line no-template-curly-in-string -- Kotlin source text
       'val `message`: kotlin.String\n        ) : DashException() {\n        override val message\n            get() = "message=${ `message` }"',
       'val errorMessage: kotlin.String\n        ) : DashException() {\n        override val message\n            get() = errorMessage'
     )

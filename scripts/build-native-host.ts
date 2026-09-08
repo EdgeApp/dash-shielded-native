@@ -1,6 +1,6 @@
+import { spawn } from 'child_process'
 import { copyFile, mkdir } from 'fs/promises'
 import { join } from 'path'
-import { spawn } from 'child_process'
 
 const rustDir = join(__dirname, '../rust')
 const prebuildDir = join(
@@ -15,7 +15,7 @@ function run(cmd: string, args: string[], cwd: string): Promise<void> {
     child.on('error', reject)
     child.on('exit', code => {
       if (code === 0) resolve()
-      else reject(new Error(`${cmd} ${args.join(' ')} exited ${code}`))
+      else reject(new Error(`${cmd} ${args.join(' ')} exited ${String(code)}`))
     })
   })
 }
@@ -29,7 +29,9 @@ async function main(): Promise<void> {
   await mkdir(prebuildDir, { recursive: true })
 
   const dylib =
-    process.platform === 'darwin' ? 'libdashshielded.dylib' : 'libdashshielded.so'
+    process.platform === 'darwin'
+      ? 'libdashshielded.dylib'
+      : 'libdashshielded.so'
   const built = join(rustDir, 'target', 'release', dylib)
   const dest = join(prebuildDir, 'dashshielded.node')
   await copyFile(built, dest)

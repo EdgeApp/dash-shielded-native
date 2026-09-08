@@ -83,7 +83,7 @@ export class Synchronizer {
 
   async stop(): Promise<string> {
     this.unsubscribe()
-    return this.addon.stop(this.alias)
+    return await this.addon.stop(this.alias)
   }
 
   async initialize(config: InitializerConfig): Promise<void> {
@@ -108,7 +108,7 @@ export class Synchronizer {
   }
 
   async deriveShieldedAddress(): Promise<Addresses> {
-    return this.addon.deriveShieldedAddress(this.alias)
+    return await this.addon.deriveShieldedAddress(this.alias)
   }
 
   async getBalance(): Promise<{
@@ -235,9 +235,7 @@ export const makeSynchronizer = async (
   return synchronizer
 }
 
-export function makeNodeDashShieldedModule(
-  opts: MakeNodeDashShieldedOpts
-): {
+export function makeNodeDashShieldedModule(opts: MakeNodeDashShieldedOpts): {
   Tools: typeof Tools
   makeSynchronizer: typeof makeSynchronizer
 } {

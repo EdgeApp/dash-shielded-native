@@ -76,11 +76,11 @@ export interface ErrorEvent {
 }
 
 export interface SynchronizerCallbacks {
-  onBalanceChanged(balance: BalanceEvent): void
-  onStatusChanged(status: StatusEvent): void
-  onTransactionsChanged(transactions: TransactionEvent): void
-  onUpdate(event: UpdateEvent): void
-  onError(error: ErrorEvent): void
+  onBalanceChanged: (balance: BalanceEvent) => void
+  onStatusChanged: (status: StatusEvent) => void
+  onTransactionsChanged: (transactions: TransactionEvent) => void
+  onUpdate: (event: UpdateEvent) => void
+  onError: (error: ErrorEvent) => void
 }
 
 export interface Addresses {

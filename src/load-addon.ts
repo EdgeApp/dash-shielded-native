@@ -19,9 +19,7 @@ export interface NativeDashAddon {
   deriveViewingKey: (mnemonicSeed: string, network: string) => string
   warmUpProver: () => Promise<void>
   isProverReady: () => boolean
-  poll: (
-    alias: string
-  ) => Promise<{
+  poll: (alias: string) => Promise<{
     alias: string
     status: string
     scanProgress: number
@@ -80,6 +78,9 @@ export function loadNativeAddon(): NativeDashAddon {
         missing.push(candidate)
         continue
       }
+      // The addon path is resolved at runtime from the platform triple, so this
+      // cannot be a static import.
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const mod = require(candidate) as NativeDashAddon
       if (typeof mod.initialize !== 'function') continue
       cached = mod

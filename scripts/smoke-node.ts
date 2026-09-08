@@ -48,8 +48,21 @@ async function main(): Promise<void> {
     throw new Error(`expected empty balance, got ${balance.totalCredits}`)
   }
 
+  // Building the Halo 2 proving key is the heaviest thing this module does and
+  // the only part a spend cannot skip, so the smoke test proves it completes
+  // rather than leaving it to be discovered on a user's first send.
+  if (await io.Tools.isProverReady()) {
+    throw new Error('prover reported ready before warm-up')
+  }
+  const proverStart = Date.now()
+  await io.Tools.warmUpProver()
+  const proverMs = Date.now() - proverStart
+  if (!(await io.Tools.isProverReady())) {
+    throw new Error('prover did not become ready after warm-up')
+  }
+
   console.log('smoke-node ok')
-  console.log(JSON.stringify({ address, viewing }, null, 2))
+  console.log(JSON.stringify({ address, viewing, proverMs }, null, 2))
   await synchronizer.stop()
 }
 

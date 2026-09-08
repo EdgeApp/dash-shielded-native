@@ -11,11 +11,8 @@ async function main(): Promise<void> {
   const mnemonic =
     'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon art'
 
-  const validDummy = await io.Tools.isValidAddress(
-    'not-an-address',
-    'testnet'
-  )
-  if (validDummy !== false) {
+  const validDummy = await io.Tools.isValidAddress('not-an-address', 'testnet')
+  if (validDummy) {
     throw new Error('isValidAddress should reject garbage')
   }
 
@@ -29,7 +26,7 @@ async function main(): Promise<void> {
     throw new Error(`unexpected testnet address ${address}`)
   }
   const addressOk = await io.Tools.isValidAddress(address, 'testnet')
-  if (addressOk !== true) {
+  if (!addressOk) {
     throw new Error(`derived address failed validation: ${address}`)
   }
 
@@ -44,9 +41,7 @@ async function main(): Promise<void> {
   })
   const derived = await synchronizer.deriveShieldedAddress()
   if (derived.shieldedAddress !== address) {
-    throw new Error(
-      `address mismatch ${derived.shieldedAddress} vs ${address}`
-    )
+    throw new Error(`address mismatch ${derived.shieldedAddress} vs ${address}`)
   }
   const balance = await synchronizer.getBalance()
   if (balance.totalCredits !== '0') {

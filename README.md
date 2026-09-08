@@ -34,3 +34,10 @@ socket npm install
 socket npm run build-native-host
 socket npm run smoke-node
 ```
+
+The Rust build pulls `dash-sdk`, whose `dapi-grpc` dependency compiles protobuf
+definitions at build time, so `protoc` must be on `PATH` (`brew install protobuf`).
+Without it the cargo step fails with `protoc not found in PATH`.
+
+`smoke-node` warms the Halo 2 proving key, which takes roughly 1.5 seconds on an
+Apple Silicon host, so the run is not instant even though it moves no funds.

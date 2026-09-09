@@ -1658,6 +1658,7 @@ dependencies = [
 name = "edge-dash-shielded"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bech32 0.11.1",
  "bip0039",
  "dash-network-seeds",

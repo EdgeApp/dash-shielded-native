@@ -86,3 +86,11 @@ export interface SynchronizerCallbacks {
 export interface Addresses {
   shieldedAddress: string
 }
+
+/** Transparent (L1) balance in duffs, with the SPV client's header height. */
+export interface CoreBalance {
+  confirmedDuffs: string
+  unconfirmedDuffs: string
+  totalDuffs: string
+  syncedHeight: number
+}

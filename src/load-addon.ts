@@ -15,6 +15,19 @@ export interface NativeDashAddon {
   startSync: (alias: string) => Promise<void>
   stopSync: (alias: string) => Promise<void>
   deriveShieldedAddress: (alias: string) => Promise<{ shieldedAddress: string }>
+  coreReceiveAddress: (alias: string, account: number) => Promise<string>
+  startCoreSync: (alias: string, fromHeight: number) => Promise<void>
+  coreBalance: (alias: string) => Promise<{
+    confirmedDuffs: string
+    unconfirmedDuffs: string
+    totalDuffs: string
+    syncedHeight: number
+  }>
+  shieldFromAssetLock: (
+    alias: string,
+    amountDuffs: string,
+    accountIndex: number
+  ) => Promise<string>
   isValidAddress: (address: string, network: string) => boolean
   deriveViewingKey: (mnemonicSeed: string, network: string) => string
   warmUpProver: () => Promise<void>

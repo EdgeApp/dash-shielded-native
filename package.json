@@ -59,6 +59,7 @@
     "build-native-host": "node -r sucrase/register ./scripts/build-native-host.ts",
     "build-native-ios": "node -r sucrase/register ./scripts/build-native-ios.ts",
     "fix": "npm run lint -- --fix",
+    "fund-testnet": "node -r sucrase/register ./scripts/fund-testnet.ts",
     "lint": "eslint .",
     "prepare": "rimraf lib && rollup -c && tsc",
     "prepublishOnly": "npm run build-native-ios && npm run build-native-android && npm run build-native-host",

@@ -3,6 +3,7 @@ import { mkdirSync } from 'fs'
 import { loadNativeAddon, NativeDashAddon } from './load-addon'
 import {
   Addresses,
+  CoreBalance,
   CreateTransferOpts,
   InitializerConfig,
   Network,
@@ -109,6 +110,45 @@ export class Synchronizer {
 
   async deriveShieldedAddress(): Promise<Addresses> {
     return await this.addon.deriveShieldedAddress(this.alias)
+  }
+
+  /**
+   * Next unused transparent (L1) receive address, for getting value into the
+   * wallet in the first place. The shielded pool is only reachable from L1, so
+   * a fresh wallet has to be funded here before any shielded operation works.
+   */
+  async coreReceiveAddress(account: number = 0): Promise<string> {
+    return await this.addon.coreReceiveAddress(this.alias, account)
+  }
+
+  /**
+   * Start the Core (L1) SPV sync. The Platform connection cannot see L1, so
+   * transparent balance stays at zero until this runs. `fromHeight` skips
+   * history older than the wallet.
+   */
+  async startCoreSync(fromHeight: number): Promise<void> {
+    await this.addon.startCoreSync(this.alias, fromHeight)
+  }
+
+  async coreBalance(): Promise<CoreBalance> {
+    return await this.addon.coreBalance(this.alias)
+  }
+
+  /**
+   * Move transparent balance into the shielded pool through an asset lock.
+   * Builds and broadcasts the L1 lock, waits for its InstantSend or ChainLock
+   * proof, then proves and broadcasts the shielding transition, so this takes
+   * seconds and needs a synced Core balance to spend.
+   */
+  async shieldFromAssetLock(
+    amountDuffs: string,
+    accountIndex: number = 0
+  ): Promise<string> {
+    return await this.addon.shieldFromAssetLock(
+      this.alias,
+      amountDuffs,
+      accountIndex
+    )
   }
 
   async getBalance(): Promise<{

@@ -120,6 +120,49 @@ pub async fn derive_shielded_address(alias: String) -> Result<JsAddresses> {
 }
 
 #[napi]
+pub async fn core_receive_address(alias: String, account: u32) -> Result<String> {
+    map(wallet::core_receive_address(alias, account).await)
+}
+
+#[napi(object)]
+pub struct JsCoreBalance {
+    pub confirmed_duffs: String,
+    pub unconfirmed_duffs: String,
+    pub total_duffs: String,
+    pub synced_height: u32,
+}
+
+impl From<wallet::CoreBalance> for JsCoreBalance {
+    fn from(value: wallet::CoreBalance) -> Self {
+        Self {
+            confirmed_duffs: value.confirmed_duffs,
+            unconfirmed_duffs: value.unconfirmed_duffs,
+            total_duffs: value.total_duffs,
+            synced_height: value.synced_height,
+        }
+    }
+}
+
+#[napi]
+pub async fn start_core_sync(alias: String, from_height: u32) -> Result<()> {
+    map(wallet::start_core_sync(alias, from_height).await)
+}
+
+#[napi]
+pub async fn core_balance(alias: String) -> Result<JsCoreBalance> {
+    map(wallet::core_balance(alias).await).map(Into::into)
+}
+
+#[napi]
+pub async fn shield_from_asset_lock(
+    alias: String,
+    amount_duffs: String,
+    account_index: u32,
+) -> Result<String> {
+    map(wallet::shield_from_asset_lock(alias, amount_duffs, account_index).await)
+}
+
+#[napi]
 pub fn is_valid_address(address: String, network: String) -> bool {
     wallet::is_valid_address(address, network)
 }

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- added: Fund the shielded pool from L1 through an asset lock
+- added: Transparent receive address, Core SPV sync, and L1 balance
 - added: Smoke test covers the Orchard proving key warm-up
 - fixed: Dependency installs resolve instead of failing on peer conflicts
 

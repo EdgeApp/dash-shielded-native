@@ -303,6 +303,31 @@ async fn fetch_active_masternodes(quorum_base: &str) -> WalletResult<Vec<String>
     Ok(out)
 }
 
+/// Platform gRPC port for a network.
+///
+/// Mainnet serves DAPI on 443, testnet on 1443. The quorum service reports
+/// each node's Core P2P endpoint, never its Platform one, so the port has to
+/// come from the network rather than from that address. A non-zero
+/// `caller_port` wins, which is how a devnet or a custom deployment is reached.
+fn platform_port(network: Network, caller_port: u32) -> u32 {
+    if caller_port != 0 {
+        return caller_port;
+    }
+    match network {
+        Network::Mainnet => 443,
+        _ => 1443,
+    }
+}
+
+/// Both public DAPI ports terminate TLS; anything else is a local deployment.
+fn platform_scheme(port: u32) -> &'static str {
+    if port == 443 || port == 1443 {
+        "https"
+    } else {
+        "http"
+    }
+}
+
 pub async fn initialize(
     mnemonic_seed: String,
     account: u32,
@@ -324,18 +349,20 @@ pub async fn initialize(
         _ => "",
     };
 
+    let port = platform_port(network, default_port);
+    let scheme = platform_scheme(port);
+
     let mut endpoints: Vec<SdkAddress> = Vec::new();
     if !quorum_base.is_empty() {
         if let Ok(rows) = fetch_active_masternodes(quorum_base).await {
             endpoints = rows
                 .into_iter()
-                .filter_map(|ip| format!("https://{ip}:443").parse().ok())
+                .filter_map(|ip| format!("{scheme}://{ip}:{port}").parse().ok())
                 .collect();
         }
     }
 
     // Caller-supplied host is the fallback (devnets, custom deployments).
-    let scheme = if default_port == 443 { "https" } else { "http" };
     if endpoints.is_empty() {
         if let Ok(explicit) =
             format!("{}://{}:{}", scheme, default_host, default_port).parse::<SdkAddress>()
@@ -485,8 +512,24 @@ pub async fn initialize(
 }
 
 pub async fn stop(alias: String) -> WalletResult<String> {
-    let mut clients = CLIENTS.lock().await;
-    clients.remove(&alias);
+    // Take the slot out first so nothing else starts work on it, but hold the
+    // manager alive past the removal. Dropping it while the shielded-sync task
+    // still owns a tokio timer tears the runtime down underneath that task, and
+    // the timer entry panics with "A Tokio 1.x context was found, but it is
+    // being shutdown". Signalling the loop and awaiting `quiesce` lets the task
+    // retire on its own before anything is dropped.
+    let manager = {
+        let mut clients = CLIENTS.lock().await;
+        clients.remove(&alias).and_then(|slot| slot.manager)
+    };
+
+    if let Some(manager) = manager {
+        let sync = manager.shielded_sync_arc();
+        sync.stop();
+        sync.quiesce().await;
+        manager.shutdown().await;
+    }
+
     Ok("STOPPED".to_string())
 }
 

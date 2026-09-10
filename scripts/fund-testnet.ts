@@ -89,7 +89,10 @@ async function main(): Promise<void> {
 
   console.log(`shielding ${shieldDuffs} duffs`)
   const started = Date.now()
-  const recipient = await synchronizer.shieldFromAssetLock(shieldDuffs)
+  const recipient = await synchronizer.shieldFromAssetLock(
+    shieldDuffs,
+    mnemonicSeed
+  )
   console.log(`shielded to ${recipient} in ${String(Date.now() - started)} ms`)
 
   await synchronizer.startSync()

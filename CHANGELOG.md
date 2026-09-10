@@ -2,10 +2,15 @@
 
 ## Unreleased
 
+- added: Move shielded value out to a Platform or Core address
+- added: Resume a shield whose asset lock is already on chain
+- added: React Native reaches the same calls as Node
 - added: Fund the shielded pool from L1 through an asset lock
 - added: Transparent receive address, Core SPV sync, and L1 balance
 - added: Smoke test covers the Orchard proving key warm-up
 - fixed: Testnet reaches DAPI on port 1443 instead of an unreachable 443
+- fixed: The macOS prebuild loads instead of being killed at require
+- fixed: Android ships a library for armeabi-v7a as well as arm64-v8a
 - fixed: Stopping a wallet no longer panics the shielded sync task
 - fixed: Dependency installs resolve instead of failing on peer conflicts
 

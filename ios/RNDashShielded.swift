@@ -137,6 +137,117 @@ class RNDashShielded: RCTEventEmitter {
     }
   }
 
+  @objc func coreReceiveAddress(
+    _ alias: String, _ account: Int,
+    resolver resolve: @escaping RCTPromiseResolveBlock,
+    rejecter reject: @escaping RCTPromiseRejectBlock
+  ) {
+    run(resolve, reject, "coreReceiveAddress") {
+      try EdgeDashClient.rustCoreReceiveAddress(alias: alias, account: UInt32(account))
+    }
+  }
+
+  @objc func startCoreSync(
+    _ alias: String, _ fromHeight: Int,
+    resolver resolve: @escaping RCTPromiseResolveBlock,
+    rejecter reject: @escaping RCTPromiseRejectBlock
+  ) {
+    run(resolve, reject, "startCoreSync") {
+      try EdgeDashClient.rustStartCoreSync(alias: alias, fromHeight: UInt32(fromHeight))
+      return nil
+    }
+  }
+
+  @objc func coreBalance(
+    _ alias: String,
+    resolver resolve: @escaping RCTPromiseResolveBlock,
+    rejecter reject: @escaping RCTPromiseRejectBlock
+  ) {
+    run(resolve, reject, "coreBalance") {
+      let balance = try EdgeDashClient.rustCoreBalance(alias: alias)
+      return [
+        "confirmedDuffs": balance.confirmedDuffs,
+        "unconfirmedDuffs": balance.unconfirmedDuffs,
+        "totalDuffs": balance.totalDuffs,
+        "syncedHeight": balance.syncedHeight,
+      ]
+    }
+  }
+
+  @objc func shieldFromAssetLock(
+    _ alias: String, _ amountDuffs: String, _ accountIndex: Int, _ mnemonicSeed: String,
+    resolver resolve: @escaping RCTPromiseResolveBlock,
+    rejecter reject: @escaping RCTPromiseRejectBlock
+  ) {
+    run(resolve, reject, "shieldFromAssetLock") {
+      try EdgeDashClient.rustShieldFromAssetLock(
+        alias: alias, amountDuffs: amountDuffs, accountIndex: UInt32(accountIndex),
+        mnemonicSeed: mnemonicSeed)
+    }
+  }
+
+  @objc func platformReceiveAddress(
+    _ alias: String, _ account: Int,
+    resolver resolve: @escaping RCTPromiseResolveBlock,
+    rejecter reject: @escaping RCTPromiseRejectBlock
+  ) {
+    run(resolve, reject, "platformReceiveAddress") {
+      try EdgeDashClient.rustPlatformReceiveAddress(alias: alias, account: UInt32(account))
+    }
+  }
+
+  @objc func trackedAssetLocks(
+    _ alias: String,
+    resolver resolve: @escaping RCTPromiseResolveBlock,
+    rejecter reject: @escaping RCTPromiseRejectBlock
+  ) {
+    run(resolve, reject, "trackedAssetLocks") {
+      try EdgeDashClient.rustTrackedAssetLocks(alias: alias).map { lock in
+        [
+          "txid": lock.txid,
+          "vout": lock.vout,
+          "status": lock.status,
+        ] as NSDictionary
+      }
+    }
+  }
+
+  @objc func resumeShieldFromAssetLock(
+    _ alias: String, _ txid: String, _ vout: Int, _ mnemonicSeed: String,
+    resolver resolve: @escaping RCTPromiseResolveBlock,
+    rejecter reject: @escaping RCTPromiseRejectBlock
+  ) {
+    run(resolve, reject, "resumeShieldFromAssetLock") {
+      try EdgeDashClient.rustResumeShieldFromAssetLock(
+        alias: alias, txid: txid, vout: UInt32(vout), mnemonicSeed: mnemonicSeed)
+    }
+  }
+
+  @objc func unshield(
+    _ alias: String, _ toAddress: String, _ amountCredits: String, _ mnemonicSeed: String,
+    resolver resolve: @escaping RCTPromiseResolveBlock,
+    rejecter reject: @escaping RCTPromiseRejectBlock
+  ) {
+    run(resolve, reject, "unshield") {
+      try EdgeDashClient.rustUnshield(
+        alias: alias, toAddress: toAddress, amountCredits: amountCredits,
+        mnemonicSeed: mnemonicSeed)
+    }
+  }
+
+  @objc func shieldedWithdraw(
+    _ alias: String, _ toCoreAddress: String, _ amountCredits: String,
+    _ coreFeePerByte: Int, _ mnemonicSeed: String,
+    resolver resolve: @escaping RCTPromiseResolveBlock,
+    rejecter reject: @escaping RCTPromiseRejectBlock
+  ) {
+    run(resolve, reject, "shieldedWithdraw") {
+      try EdgeDashClient.rustShieldedWithdraw(
+        alias: alias, toCoreAddress: toCoreAddress, amountCredits: amountCredits,
+        coreFeePerByte: UInt32(coreFeePerByte), mnemonicSeed: mnemonicSeed)
+    }
+  }
+
   @objc func isValidAddress(
     _ address: String, _ network: String,
     resolver resolve: @escaping RCTPromiseResolveBlock,

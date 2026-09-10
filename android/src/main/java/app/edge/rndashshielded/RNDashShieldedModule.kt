@@ -96,6 +96,136 @@ class RNDashShieldedModule(
     }
 
     @ReactMethod
+    fun coreReceiveAddress(alias: String, account: Double, promise: Promise) {
+        moduleScope.launch {
+            promise.wrap { uniffi.dash.coreReceiveAddress(alias, account.toUInt()) }
+        }
+    }
+
+    @ReactMethod
+    fun startCoreSync(alias: String, fromHeight: Double, promise: Promise) {
+        moduleScope.launch {
+            promise.wrap {
+                uniffi.dash.startCoreSync(alias, fromHeight.toUInt())
+                null
+            }
+        }
+    }
+
+    @ReactMethod
+    fun coreBalance(alias: String, promise: Promise) {
+        moduleScope.launch {
+            promise.wrap {
+                val balance = uniffi.dash.coreBalance(alias)
+                Arguments.createMap().apply {
+                    putString("confirmedDuffs", balance.confirmedDuffs)
+                    putString("unconfirmedDuffs", balance.unconfirmedDuffs)
+                    putString("totalDuffs", balance.totalDuffs)
+                    putDouble("syncedHeight", balance.syncedHeight.toDouble())
+                }
+            }
+        }
+    }
+
+    @ReactMethod
+    fun shieldFromAssetLock(
+        alias: String,
+        amountDuffs: String,
+        accountIndex: Double,
+        mnemonicSeed: String,
+        promise: Promise,
+    ) {
+        moduleScope.launch {
+            promise.wrap {
+                uniffi.dash.shieldFromAssetLock(
+                    alias,
+                    amountDuffs,
+                    accountIndex.toUInt(),
+                    mnemonicSeed,
+                )
+            }
+        }
+    }
+
+    @ReactMethod
+    fun platformReceiveAddress(
+        alias: String,
+        account: Double,
+        promise: Promise,
+    ) {
+        moduleScope.launch {
+            promise.wrap { uniffi.dash.platformReceiveAddress(alias, account.toUInt()) }
+        }
+    }
+
+    @ReactMethod
+    fun trackedAssetLocks(alias: String, promise: Promise) {
+        moduleScope.launch {
+            promise.wrap {
+                val locks = Arguments.createArray()
+                uniffi.dash.trackedAssetLocks(alias).forEach { lock ->
+                    val map = Arguments.createMap()
+                    map.putString("txid", lock.txid)
+                    map.putInt("vout", lock.vout.toInt())
+                    map.putString("status", lock.status)
+                    locks.pushMap(map)
+                }
+                locks
+            }
+        }
+    }
+
+    @ReactMethod
+    fun resumeShieldFromAssetLock(
+        alias: String,
+        txid: String,
+        vout: Double,
+        mnemonicSeed: String,
+        promise: Promise,
+    ) {
+        moduleScope.launch {
+            promise.wrap {
+                uniffi.dash.resumeShieldFromAssetLock(alias, txid, vout.toUInt(), mnemonicSeed)
+            }
+        }
+    }
+
+    @ReactMethod
+    fun unshield(
+        alias: String,
+        toAddress: String,
+        amountCredits: String,
+        mnemonicSeed: String,
+        promise: Promise,
+    ) {
+        moduleScope.launch {
+            promise.wrap { uniffi.dash.unshield(alias, toAddress, amountCredits, mnemonicSeed) }
+        }
+    }
+
+    @ReactMethod
+    fun shieldedWithdraw(
+        alias: String,
+        toCoreAddress: String,
+        amountCredits: String,
+        coreFeePerByte: Double,
+        mnemonicSeed: String,
+        promise: Promise,
+    ) {
+        moduleScope.launch {
+            promise.wrap {
+                uniffi.dash.shieldedWithdraw(
+                    alias,
+                    toCoreAddress,
+                    amountCredits,
+                    coreFeePerByte.toUInt(),
+                    mnemonicSeed,
+                )
+            }
+        }
+    }
+
+    @ReactMethod
     fun stop(alias: String, promise: Promise) {
         moduleScope.launch {
             promise.wrap { uniffi.dash.stop(alias) }

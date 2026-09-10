@@ -10,7 +10,7 @@ mod uniffi_api;
 pub use uniffi_api::*;
 
 #[cfg(feature = "uniffi-backend")]
-pub use wallet::{Addresses, Poll, Transaction};
+pub use wallet::{Addresses, AssetLock, CoreBalance, Poll, Transaction};
 
 #[cfg(feature = "uniffi-backend")]
 uniffi::include_scaffolding!("dash");

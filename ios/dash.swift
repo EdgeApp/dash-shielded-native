@@ -573,6 +573,170 @@ public func FfiConverterTypeAddresses_lower(_ value: Addresses) -> RustBuffer {
 }
 
 
+public struct AssetLock {
+    public var txid: String
+    public var vout: UInt32
+    public var status: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(txid: String, vout: UInt32, status: String) {
+        self.txid = txid
+        self.vout = vout
+        self.status = status
+    }
+}
+
+#if compiler(>=6)
+extension AssetLock: Sendable {}
+#endif
+
+
+extension AssetLock: Equatable, Hashable {
+    public static func ==(lhs: AssetLock, rhs: AssetLock) -> Bool {
+        if lhs.txid != rhs.txid {
+            return false
+        }
+        if lhs.vout != rhs.vout {
+            return false
+        }
+        if lhs.status != rhs.status {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(txid)
+        hasher.combine(vout)
+        hasher.combine(status)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAssetLock: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AssetLock {
+        return
+            try AssetLock(
+                txid: FfiConverterString.read(from: &buf), 
+                vout: FfiConverterUInt32.read(from: &buf), 
+                status: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AssetLock, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.txid, into: &buf)
+        FfiConverterUInt32.write(value.vout, into: &buf)
+        FfiConverterString.write(value.status, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAssetLock_lift(_ buf: RustBuffer) throws -> AssetLock {
+    return try FfiConverterTypeAssetLock.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAssetLock_lower(_ value: AssetLock) -> RustBuffer {
+    return FfiConverterTypeAssetLock.lower(value)
+}
+
+
+public struct CoreBalance {
+    public var confirmedDuffs: String
+    public var unconfirmedDuffs: String
+    public var totalDuffs: String
+    public var syncedHeight: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(confirmedDuffs: String, unconfirmedDuffs: String, totalDuffs: String, syncedHeight: UInt32) {
+        self.confirmedDuffs = confirmedDuffs
+        self.unconfirmedDuffs = unconfirmedDuffs
+        self.totalDuffs = totalDuffs
+        self.syncedHeight = syncedHeight
+    }
+}
+
+#if compiler(>=6)
+extension CoreBalance: Sendable {}
+#endif
+
+
+extension CoreBalance: Equatable, Hashable {
+    public static func ==(lhs: CoreBalance, rhs: CoreBalance) -> Bool {
+        if lhs.confirmedDuffs != rhs.confirmedDuffs {
+            return false
+        }
+        if lhs.unconfirmedDuffs != rhs.unconfirmedDuffs {
+            return false
+        }
+        if lhs.totalDuffs != rhs.totalDuffs {
+            return false
+        }
+        if lhs.syncedHeight != rhs.syncedHeight {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(confirmedDuffs)
+        hasher.combine(unconfirmedDuffs)
+        hasher.combine(totalDuffs)
+        hasher.combine(syncedHeight)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCoreBalance: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CoreBalance {
+        return
+            try CoreBalance(
+                confirmedDuffs: FfiConverterString.read(from: &buf), 
+                unconfirmedDuffs: FfiConverterString.read(from: &buf), 
+                totalDuffs: FfiConverterString.read(from: &buf), 
+                syncedHeight: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CoreBalance, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.confirmedDuffs, into: &buf)
+        FfiConverterString.write(value.unconfirmedDuffs, into: &buf)
+        FfiConverterString.write(value.totalDuffs, into: &buf)
+        FfiConverterUInt32.write(value.syncedHeight, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCoreBalance_lift(_ buf: RustBuffer) throws -> CoreBalance {
+    return try FfiConverterTypeCoreBalance.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCoreBalance_lower(_ value: CoreBalance) -> RustBuffer {
+    return FfiConverterTypeCoreBalance.lower(value)
+}
+
+
 public struct Poll {
     public var alias: String
     public var status: String
@@ -920,6 +1084,31 @@ fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeAssetLock: FfiConverterRustBuffer {
+    typealias SwiftType = [AssetLock]
+
+    public static func write(_ value: [AssetLock], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAssetLock.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AssetLock] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AssetLock]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAssetLock.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeTransaction: FfiConverterRustBuffer {
     typealias SwiftType = [Transaction]
 
@@ -940,6 +1129,21 @@ fileprivate struct FfiConverterSequenceTypeTransaction: FfiConverterRustBuffer {
         }
         return seq
     }
+}
+public func coreBalance(alias: String)throws  -> CoreBalance  {
+    return try  FfiConverterTypeCoreBalance_lift(try rustCallWithError(FfiConverterTypeDashError_lift) {
+    uniffi_dashshielded_fn_func_core_balance(
+        FfiConverterString.lower(alias),$0
+    )
+})
+}
+public func coreReceiveAddress(alias: String, account: UInt32)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeDashError_lift) {
+    uniffi_dashshielded_fn_func_core_receive_address(
+        FfiConverterString.lower(alias),
+        FfiConverterUInt32.lower(account),$0
+    )
+})
 }
 public func createTransfer(alias: String, proposalId: String, mnemonicSeed: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeDashError_lift) {
@@ -999,6 +1203,14 @@ public func isValidAddress(address: String, network: String) -> Bool  {
     )
 })
 }
+public func platformReceiveAddress(alias: String, account: UInt32)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeDashError_lift) {
+    uniffi_dashshielded_fn_func_platform_receive_address(
+        FfiConverterString.lower(alias),
+        FfiConverterUInt32.lower(account),$0
+    )
+})
+}
 public func poll(alias: String)throws  -> Poll  {
     return try  FfiConverterTypePoll_lift(try rustCallWithError(FfiConverterTypeDashError_lift) {
     uniffi_dashshielded_fn_func_poll(
@@ -1016,9 +1228,47 @@ public func proposeTransfer(alias: String, amountCredits: String, toAddress: Str
     )
 })
 }
+public func resumeShieldFromAssetLock(alias: String, txid: String, vout: UInt32, mnemonicSeed: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeDashError_lift) {
+    uniffi_dashshielded_fn_func_resume_shield_from_asset_lock(
+        FfiConverterString.lower(alias),
+        FfiConverterString.lower(txid),
+        FfiConverterUInt32.lower(vout),
+        FfiConverterString.lower(mnemonicSeed),$0
+    )
+})
+}
 public func setDocumentDirectory(path: String)throws   {try rustCallWithError(FfiConverterTypeDashError_lift) {
     uniffi_dashshielded_fn_func_set_document_directory(
         FfiConverterString.lower(path),$0
+    )
+}
+}
+public func shieldFromAssetLock(alias: String, amountDuffs: String, accountIndex: UInt32, mnemonicSeed: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeDashError_lift) {
+    uniffi_dashshielded_fn_func_shield_from_asset_lock(
+        FfiConverterString.lower(alias),
+        FfiConverterString.lower(amountDuffs),
+        FfiConverterUInt32.lower(accountIndex),
+        FfiConverterString.lower(mnemonicSeed),$0
+    )
+})
+}
+public func shieldedWithdraw(alias: String, toCoreAddress: String, amountCredits: String, coreFeePerByte: UInt32, mnemonicSeed: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeDashError_lift) {
+    uniffi_dashshielded_fn_func_shielded_withdraw(
+        FfiConverterString.lower(alias),
+        FfiConverterString.lower(toCoreAddress),
+        FfiConverterString.lower(amountCredits),
+        FfiConverterUInt32.lower(coreFeePerByte),
+        FfiConverterString.lower(mnemonicSeed),$0
+    )
+})
+}
+public func startCoreSync(alias: String, fromHeight: UInt32)throws   {try rustCallWithError(FfiConverterTypeDashError_lift) {
+    uniffi_dashshielded_fn_func_start_core_sync(
+        FfiConverterString.lower(alias),
+        FfiConverterUInt32.lower(fromHeight),$0
     )
 }
 }
@@ -1041,6 +1291,23 @@ public func stopSync(alias: String)throws   {try rustCallWithError(FfiConverterT
     )
 }
 }
+public func trackedAssetLocks(alias: String)throws  -> [AssetLock]  {
+    return try  FfiConverterSequenceTypeAssetLock.lift(try rustCallWithError(FfiConverterTypeDashError_lift) {
+    uniffi_dashshielded_fn_func_tracked_asset_locks(
+        FfiConverterString.lower(alias),$0
+    )
+})
+}
+public func unshield(alias: String, toAddress: String, amountCredits: String, mnemonicSeed: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeDashError_lift) {
+    uniffi_dashshielded_fn_func_unshield(
+        FfiConverterString.lower(alias),
+        FfiConverterString.lower(toAddress),
+        FfiConverterString.lower(amountCredits),
+        FfiConverterString.lower(mnemonicSeed),$0
+    )
+})
+}
 public func warmUpProver()throws   {try rustCallWithError(FfiConverterTypeDashError_lift) {
     uniffi_dashshielded_fn_func_warm_up_prover($0
     )
@@ -1061,6 +1328,12 @@ private let initializationResult: InitializationResult = {
     let scaffolding_contract_version = ffi_dashshielded_uniffi_contract_version()
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
+    }
+    if (uniffi_dashshielded_checksum_func_core_balance() != 19751) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_dashshielded_checksum_func_core_receive_address() != 65080) {
+        return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_dashshielded_checksum_func_create_transfer() != 10651) {
         return InitializationResult.apiChecksumMismatch
@@ -1083,13 +1356,28 @@ private let initializationResult: InitializationResult = {
     if (uniffi_dashshielded_checksum_func_is_valid_address() != 228) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_dashshielded_checksum_func_platform_receive_address() != 21146) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_dashshielded_checksum_func_poll() != 4874) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_dashshielded_checksum_func_propose_transfer() != 1851) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_dashshielded_checksum_func_resume_shield_from_asset_lock() != 25321) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_dashshielded_checksum_func_set_document_directory() != 41116) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_dashshielded_checksum_func_shield_from_asset_lock() != 11151) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_dashshielded_checksum_func_shielded_withdraw() != 9474) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_dashshielded_checksum_func_start_core_sync() != 10895) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_dashshielded_checksum_func_start_sync() != 56361) {
@@ -1099,6 +1387,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_dashshielded_checksum_func_stop_sync() != 6076) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_dashshielded_checksum_func_tracked_asset_locks() != 28174) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_dashshielded_checksum_func_unshield() != 14191) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_dashshielded_checksum_func_warm_up_prover() != 10994) {

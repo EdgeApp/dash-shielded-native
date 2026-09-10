@@ -94,3 +94,15 @@ export interface CoreBalance {
   totalDuffs: string
   syncedHeight: number
 }
+
+/**
+ * One asset lock the wallet is tracking. `status` runs `built`, `broadcast`,
+ * `instantSendLocked` in the native casing `instant_send_locked`,
+ * `chain_locked`, then `consumed`. Anything short of `consumed` is value in a
+ * lock that never became a note, which `resumeShieldFromAssetLock` takes.
+ */
+export interface AssetLock {
+  txid: string
+  vout: number
+  status: string
+}

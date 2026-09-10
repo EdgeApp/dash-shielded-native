@@ -3,6 +3,7 @@ import { mkdirSync } from 'fs'
 import { loadNativeAddon, NativeDashAddon } from './load-addon'
 import {
   Addresses,
+  AssetLock,
   CoreBalance,
   CreateTransferOpts,
   InitializerConfig,
@@ -122,6 +123,15 @@ export class Synchronizer {
   }
 
   /**
+   * Next unused transparent Platform address, the counterpart to
+   * `coreReceiveAddress` one layer up. This is where `unshield` puts value that
+   * leaves the Orchard pool but stays on Platform.
+   */
+  async platformReceiveAddress(account: number = 0): Promise<string> {
+    return await this.addon.platformReceiveAddress(this.alias, account)
+  }
+
+  /**
    * Start the Core (L1) SPV sync. The Platform connection cannot see L1, so
    * transparent balance stays at zero until this runs. `fromHeight` skips
    * history older than the wallet.
@@ -136,18 +146,88 @@ export class Synchronizer {
 
   /**
    * Move transparent balance into the shielded pool through an asset lock.
+   *
+   * Takes the seed per call rather than reusing the one `initialize` was given.
+   * An alias is not a secret, so a resident seed would make knowing the alias
+   * enough to move funds.
    * Builds and broadcasts the L1 lock, waits for its InstantSend or ChainLock
    * proof, then proves and broadcasts the shielding transition, so this takes
    * seconds and needs a synced Core balance to spend.
    */
   async shieldFromAssetLock(
     amountDuffs: string,
+    mnemonicSeed: string,
     accountIndex: number = 0
   ): Promise<string> {
     return await this.addon.shieldFromAssetLock(
       this.alias,
       amountDuffs,
-      accountIndex
+      accountIndex,
+      mnemonicSeed
+    )
+  }
+
+  /**
+   * The asset locks this wallet is tracking. A host that crashed mid-shield has
+   * no other way to learn the outpoint `resumeShieldFromAssetLock` needs, since
+   * the failing call returns an error rather than the lock it broadcast.
+   *
+   * Locks live only in memory: the persister writes their rows but its `load`
+   * never reads them back, so this is empty on a fresh open however much
+   * history the store holds.
+   */
+  async trackedAssetLocks(): Promise<AssetLock[]> {
+    return await this.addon.trackedAssetLocks(this.alias)
+  }
+
+  /**
+   * Finish a shield whose L1 asset lock is already on chain. A failure between
+   * broadcasting the lock and proving the transition strands the locked value,
+   * and only resuming that outpoint recovers it; building a fresh lock cannot.
+   */
+  async resumeShieldFromAssetLock(
+    txid: string,
+    vout: number,
+    mnemonicSeed: string
+  ): Promise<string> {
+    return await this.addon.resumeShieldFromAssetLock(
+      this.alias,
+      txid,
+      vout,
+      mnemonicSeed
+    )
+  }
+
+  /** Move shielded value out to a transparent Platform address. */
+  async unshield(
+    toAddress: string,
+    amountCredits: string,
+    mnemonicSeed: string
+  ): Promise<string> {
+    return await this.addon.unshield(
+      this.alias,
+      toAddress,
+      amountCredits,
+      mnemonicSeed
+    )
+  }
+
+  /**
+   * Move shielded value out to a Core L1 address. `coreFeePerByte` prices the
+   * L1 transaction the network builds on the far side, in duffs per byte.
+   */
+  async shieldedWithdraw(
+    toCoreAddress: string,
+    amountCredits: string,
+    mnemonicSeed: string,
+    coreFeePerByte: number = 1
+  ): Promise<string> {
+    return await this.addon.shieldedWithdraw(
+      this.alias,
+      toCoreAddress,
+      amountCredits,
+      coreFeePerByte,
+      mnemonicSeed
     )
   }
 

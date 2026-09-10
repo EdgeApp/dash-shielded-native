@@ -35,6 +35,14 @@ async function main(): Promise<void> {
   const built = join(rustDir, 'target', 'release', dylib)
   const dest = join(prebuildDir, 'dashshielded.node')
   await copyFile(built, dest)
+
+  // macOS refuses to load a copied dylib under its original linker-signed
+  // signature: the copy is SIGKILLed at require() with no output. Re-sign the
+  // destination ad hoc so the addon actually loads.
+  if (process.platform === 'darwin') {
+    await run('codesign', ['--force', '--sign', '-', dest], prebuildDir)
+  }
+
   console.log(`Wrote ${dest}`)
 }
 

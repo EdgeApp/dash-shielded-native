@@ -89,7 +89,6 @@ const MAINNET_HRP: &str = "dash";
 const TESTNET_HRP: &str = "tdash";
 
 pub struct ClientSlot {
-    pub mnemonic: String,
     pub network: String,
     pub account: u32,
     pub address: String,
@@ -134,6 +133,18 @@ pub struct CoreBalance {
     pub unconfirmed_duffs: String,
     pub total_duffs: String,
     pub synced_height: u32,
+}
+
+/// One asset lock this wallet is tracking, as a host needs to see it.
+///
+/// `status` is the lifecycle stage: `built`, `broadcast`, `instant_send_locked`,
+/// `chain_locked`, or `consumed`. Anything short of `consumed` is value sitting
+/// in a lock that never became a shielded note, which is what
+/// `resume_shield_from_asset_lock` takes.
+pub struct AssetLock {
+    pub txid: String,
+    pub vout: u32,
+    pub status: String,
 }
 
 pub struct Transaction {
@@ -320,6 +331,12 @@ fn platform_port(network: Network, caller_port: u32) -> u32 {
 }
 
 /// Both public DAPI ports terminate TLS; anything else is a local deployment.
+///
+/// Only ever applied to the caller's own `default_host` fallback. Nodes found
+/// through the quorum service are public masternodes and stay on `https`
+/// whatever port they answer on: inferring their scheme from a caller-supplied
+/// port would silently put mainnet or testnet gRPC in cleartext, and a shielded
+/// wallet's request stream is exactly the metadata the pool exists to hide.
 fn platform_scheme(port: u32) -> &'static str {
     if port == 443 || port == 1443 {
         "https"
@@ -350,22 +367,26 @@ pub async fn initialize(
     };
 
     let port = platform_port(network, default_port);
-    let scheme = platform_scheme(port);
 
     let mut endpoints: Vec<SdkAddress> = Vec::new();
     if !quorum_base.is_empty() {
         if let Ok(rows) = fetch_active_masternodes(quorum_base).await {
             endpoints = rows
                 .into_iter()
-                .filter_map(|ip| format!("{scheme}://{ip}:{port}").parse().ok())
+                .filter_map(|ip| format!("https://{ip}:{port}").parse().ok())
                 .collect();
         }
     }
 
     // Caller-supplied host is the fallback (devnets, custom deployments).
     if endpoints.is_empty() {
-        if let Ok(explicit) =
-            format!("{}://{}:{}", scheme, default_host, default_port).parse::<SdkAddress>()
+        if let Ok(explicit) = format!(
+            "{}://{}:{}",
+            platform_scheme(default_port),
+            default_host,
+            default_port
+        )
+        .parse::<SdkAddress>()
         {
             endpoints.push(explicit);
         }
@@ -446,15 +467,46 @@ pub async fn initialize(
     let seed64 = mnemonic.to_seed("");
     let shielded_seed = seed64;
 
-    let wallet = manager
-        .create_wallet_from_seed_bytes(
-            network,
-            &seed64,
-            WalletAccountCreationOptions::Default,
-            None,
-        )
-        .await
-        .map_err(|e| format!("create_wallet_from_seed_bytes: {e}"))?;
+    // Hydrate anything this alias persisted on a previous open BEFORE creating a
+    // wallet from the seed, so a restored wallet is reused rather than rebuilt.
+    //
+    // This restores nothing yet, and the reason is upstream, not here:
+    // `SqlitePersister::load` declares `LOAD_UNIMPLEMENTED =
+    // ["ClientStartState::wallets"]` and only rebuilds `platform_addresses`. It
+    // writes durable `asset_locks` rows and never reads them back, so tracked
+    // asset locks cannot survive a restart and `FromExistingAssetLock` can only
+    // find a lock inside the process that broadcast it. Calling load first is
+    // still correct: it costs one query, and it is what makes resume work across
+    // restarts the moment upstream lands the rehydration path.
+    //
+    // Best-effort: a fresh store has nothing to load, and a load failure must
+    // not stop a wallet from opening.
+    if let Err(e) = manager.load_from_persistor().await {
+        if std::env::var("DASH_SHIELDED_DEBUG").is_ok() {
+            eprintln!("[dash-shielded] load_from_persistor: {e}");
+        }
+    }
+
+    // A restored wallet is already in the manager, and creating it again would
+    // collide on WalletAlreadyExists. One manager serves one alias here, so the
+    // single restored id is this alias's wallet.
+    let restored = match manager.wallet_ids().await.first() {
+        Some(id) => manager.get_wallet(id).await,
+        None => None,
+    };
+
+    let wallet = match restored {
+        Some(wallet) => wallet,
+        None => manager
+            .create_wallet_from_seed_bytes(
+                network,
+                &seed64,
+                WalletAccountCreationOptions::Default,
+                None,
+            )
+            .await
+            .map_err(|e| format!("create_wallet_from_seed_bytes: {e}"))?,
+    };
 
     let coordinator = manager
         .shielded_coordinator()
@@ -492,7 +544,6 @@ pub async fn initialize(
     clients.insert(
         alias,
         ClientSlot {
-            mnemonic: mnemonic_seed,
             network: network_name,
             account,
             address,
@@ -642,6 +693,37 @@ pub async fn core_receive_address(alias: String, account: u32) -> WalletResult<S
     Ok(address.to_string())
 }
 
+/// Next unused transparent Platform address.
+///
+/// The counterpart to `core_receive_address` one layer up: this is where
+/// `unshield` puts value that leaves the Orchard pool but stays on Platform.
+/// Derived from public key material under DIP-17, so no seed is touched.
+pub async fn platform_receive_address(alias: String, account: u32) -> WalletResult<String> {
+    let (wallet, network_name) = {
+        let clients = CLIENTS.lock().await;
+        let slot = clients.get(&alias).ok_or("unknown alias")?;
+        (
+            slot.wallet.clone().ok_or("wallet not initialized")?,
+            slot.network.clone(),
+        )
+    };
+
+    // key_class 0 is the clear-funds purpose; the shielded classes are separate
+    // derivations and would produce an address unshield cannot pay.
+    let account_key = key_wallet::account::account_collection::PlatformPaymentAccountKey {
+        account,
+        key_class: 0,
+    };
+
+    let address = wallet
+        .platform()
+        .next_unused_receive_address(account_key)
+        .await
+        .map_err(|e| format!("next_unused_receive_address: {e}"))?;
+
+    Ok(address.to_bech32m_string(network_from_name(&network_name)))
+}
+
 /// Seed-backed Core signer.
 ///
 /// The asset-lock path signs L1 inputs and the credit-output key binding, which
@@ -649,6 +731,11 @@ pub async fn core_receive_address(alias: String, account: u32) -> WalletResult<S
 /// created external-signable so the seed never becomes resident wallet state.
 /// This signer re-derives from the mnemonic for the duration of one call, the
 /// same posture `create_transfer` already uses for the Orchard spend authority.
+///
+/// The mnemonic is a per-call parameter and never resident wallet state. Reading
+/// it off the open client instead would make an alias string sufficient to move
+/// funds, and an alias is not a secret: it is enumerable from host state and
+/// every read-only call already takes one.
 struct SeedSigner {
     wallet: key_wallet::wallet::Wallet,
 }
@@ -800,6 +887,7 @@ pub async fn shield_from_asset_lock(
     alias: String,
     amount_duffs: String,
     account_index: u32,
+    mnemonic_seed: String,
 ) -> WalletResult<String> {
     let amount: u64 = amount_duffs
         .parse()
@@ -808,11 +896,10 @@ pub async fn shield_from_asset_lock(
         return Err("amount must be greater than zero".into());
     }
 
-    let (mnemonic, network_name, wallet, manager, account) = {
+    let (network_name, wallet, manager, account) = {
         let clients = CLIENTS.lock().await;
         let slot = clients.get(&alias).ok_or("unknown alias")?;
         (
-            slot.mnemonic.clone(),
             slot.network.clone(),
             slot.wallet.clone().ok_or("wallet not initialized")?,
             slot.manager.clone().ok_or("wallet not initialized")?,
@@ -832,7 +919,7 @@ pub async fn shield_from_asset_lock(
     let recipient = dash_sdk::dpp::address_funds::OrchardAddress::from_raw_bytes(&raw)
         .map_err(|e| format!("orchard address: {e}"))?;
 
-    let seed = mnemonic_to_seed(&mnemonic)?;
+    let seed = mnemonic_to_seed(&mnemonic_seed)?;
     let signer = SeedSigner::new(seed, network_from_name(&network_name))?;
     let prover = platform_wallet::wallet::shielded::prover::CachedOrchardProver::new();
 
@@ -855,6 +942,225 @@ pub async fn shield_from_asset_lock(
         .map_err(|e| format!("shielded fund from asset lock failed: {e}"))?;
 
     Ok(encode_raw_orchard_address(&raw, &network_name)?)
+}
+
+/// List the asset locks this wallet is tracking.
+///
+/// `resume_shield_from_asset_lock` needs an outpoint, and a host that crashed
+/// mid-shield has no other way to learn one: the failing call returns an error,
+/// not the lock it had just broadcast. Enumerating them is what turns resume
+/// from an entry point into a usable recovery path.
+///
+/// Locks live only in memory today. `SqlitePersister::load` still carries the
+/// upstream TODO that leaves `ClientStartState::wallets` unpopulated
+/// (`LOAD_UNIMPLEMENTED`), so the rows it writes are never read back and this
+/// list is empty on a fresh open however much history the store holds.
+pub async fn tracked_asset_locks(alias: String) -> WalletResult<Vec<AssetLock>> {
+    let (manager, wallet) = {
+        let clients = CLIENTS.lock().await;
+        let slot = clients.get(&alias).ok_or("unknown alias")?;
+        (
+            slot.manager.clone().ok_or("wallet not initialized")?,
+            slot.wallet.clone().ok_or("wallet not initialized")?,
+        )
+    };
+
+    let wallet_id = wallet.wallet_id();
+    // The accessor takes the manager lock with `blocking_read`, which panics on
+    // a runtime worker thread, so it has to run somewhere blocking is allowed.
+    let snapshots = tokio::task::spawn_blocking(move || {
+        manager.tracked_asset_locks_blocking(&wallet_id)
+    })
+    .await
+    .map_err(|e| format!("tracked_asset_locks join: {e}"))?;
+
+    Ok(snapshots
+        .into_iter()
+        .map(|snap| AssetLock {
+            txid: snap.outpoint.txid.to_string(),
+            vout: snap.outpoint.vout,
+            status: match snap.status {
+                0 => "built",
+                1 => "broadcast",
+                2 => "instant_send_locked",
+                3 => "chain_locked",
+                4 => "consumed",
+                _ => "unknown",
+            }
+            .to_string(),
+        })
+        .collect())
+}
+
+/// Finish a shield whose L1 asset lock is already on-chain.
+///
+/// `shield_from_asset_lock` broadcasts the lock first and proves the Type 18
+/// transition second, so a failure between the two leaves the locked value
+/// stranded: the duffs are spent into the lock, but nothing credits the pool.
+/// Building a fresh lock cannot recover them. This resumes the tracked lock at
+/// `txid:vout` instead, which is the only path back for those funds and the
+/// reason an auto-shielding host can retry safely.
+///
+/// Bounded by the same upstream gap as `tracked_asset_locks`: the lock has to
+/// still be in memory, so this recovers a failed shield within a process, not
+/// one whose process already exited.
+pub async fn resume_shield_from_asset_lock(
+    alias: String,
+    txid: String,
+    vout: u32,
+    mnemonic_seed: String,
+) -> WalletResult<String> {
+    let (network_name, wallet, manager, account) = {
+        let clients = CLIENTS.lock().await;
+        let slot = clients.get(&alias).ok_or("unknown alias")?;
+        (
+            slot.network.clone(),
+            slot.wallet.clone().ok_or("wallet not initialized")?,
+            slot.manager.clone().ok_or("wallet not initialized")?,
+            slot.account,
+        )
+    };
+
+    let parsed_txid: dashcore::Txid = txid
+        .parse()
+        .map_err(|e| format!("invalid txid {txid}: {e}"))?;
+    let out_point = dashcore::OutPoint {
+        txid: parsed_txid,
+        vout,
+    };
+
+    let coordinator = manager
+        .shielded_coordinator()
+        .await
+        .ok_or("shielded coordinator missing")?;
+
+    let raw = wallet
+        .shielded_default_address(account)
+        .await
+        .ok_or("shielded_default_address returned none")?;
+    let recipient = dash_sdk::dpp::address_funds::OrchardAddress::from_raw_bytes(&raw)
+        .map_err(|e| format!("orchard address: {e}"))?;
+
+    let seed = mnemonic_to_seed(&mnemonic_seed)?;
+    let signer = SeedSigner::new(seed, network_from_name(&network_name))?;
+    let prover = platform_wallet::wallet::shielded::prover::CachedOrchardProver::new();
+
+    wallet
+        .shielded_fund_from_asset_lock(
+            &coordinator,
+            platform_wallet::wallet::asset_lock::orchestration::AssetLockFunding::FromExistingAssetLock {
+                out_point,
+                // Never true here: an invitation voucher is a bearer claim
+                // already shared with someone else, and consuming one into this
+                // wallet would invalidate their claim. Only DashPay's reclaim
+                // flow sets it.
+                consume_invitation_voucher: false,
+            },
+            vec![(recipient, None)],
+            &signer,
+            &prover,
+            None,
+            0,
+            None,
+            None,
+        )
+        .await
+        .map_err(|e| format!("resume shield from asset lock failed: {e}"))?;
+
+    encode_raw_orchard_address(&raw, &network_name)
+}
+
+/// Move shielded value to a transparent Platform address.
+///
+/// The counterpart to shielding: notes are spent and the value lands on a
+/// Platform address as ordinary credits, leaving the Orchard pool.
+pub async fn unshield(
+    alias: String,
+    to_address: String,
+    amount_credits: String,
+    mnemonic_seed: String,
+) -> WalletResult<String> {
+    let amount: u64 = amount_credits
+        .parse()
+        .map_err(|_| "amount must be a whole number of credits".to_string())?;
+    if amount == 0 {
+        return Err("amount must be greater than zero".into());
+    }
+
+    let (wallet, manager, account) = {
+        let clients = CLIENTS.lock().await;
+        let slot = clients.get(&alias).ok_or("unknown alias")?;
+        (
+            slot.wallet.clone().ok_or("wallet not initialized")?,
+            slot.manager.clone().ok_or("wallet not initialized")?,
+            slot.account,
+        )
+    };
+
+    let coordinator = manager
+        .shielded_coordinator()
+        .await
+        .ok_or("shielded coordinator missing")?;
+    let seed = mnemonic_to_seed(&mnemonic_seed)?;
+    let prover = platform_wallet::wallet::shielded::prover::CachedOrchardProver::new();
+
+    wallet
+        .shielded_unshield_to(&coordinator, &seed[..], account, &to_address, amount, &prover)
+        .await
+        .map_err(|e| format!("unshield failed: {e}"))?;
+
+    Ok(to_address)
+}
+
+/// Move shielded value out to a Core L1 address.
+///
+/// `core_fee_per_byte` is the L1 fee rate in duffs per byte, which prices the
+/// withdrawal transaction the network builds on the far side.
+pub async fn shielded_withdraw(
+    alias: String,
+    to_core_address: String,
+    amount_credits: String,
+    core_fee_per_byte: u32,
+    mnemonic_seed: String,
+) -> WalletResult<String> {
+    let amount: u64 = amount_credits
+        .parse()
+        .map_err(|_| "amount must be a whole number of credits".to_string())?;
+    if amount == 0 {
+        return Err("amount must be greater than zero".into());
+    }
+
+    let (wallet, manager, account) = {
+        let clients = CLIENTS.lock().await;
+        let slot = clients.get(&alias).ok_or("unknown alias")?;
+        (
+            slot.wallet.clone().ok_or("wallet not initialized")?,
+            slot.manager.clone().ok_or("wallet not initialized")?,
+            slot.account,
+        )
+    };
+
+    let coordinator = manager
+        .shielded_coordinator()
+        .await
+        .ok_or("shielded coordinator missing")?;
+    let seed = mnemonic_to_seed(&mnemonic_seed)?;
+    let prover = platform_wallet::wallet::shielded::prover::CachedOrchardProver::new();
+
+    wallet
+        .shielded_withdraw_to(
+            &coordinator,
+            &seed[..],
+            account,
+            &to_core_address,
+            amount,
+            core_fee_per_byte,
+            &prover,
+        )
+        .await
+        .map_err(|e| format!("shielded withdraw failed: {e}"))?;
+
+    Ok(to_core_address)
 }
 
 pub async fn poll(alias: String) -> WalletResult<Poll> {

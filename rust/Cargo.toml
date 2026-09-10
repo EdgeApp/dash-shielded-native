@@ -20,7 +20,10 @@ key-wallet = { git = "https://github.com/dashpay/rust-dashcore", rev = "70d4bf8e
 platform-wallet-storage = { git = "https://github.com/dashpay/platform.git", tag = "v4.1.1", features = ["sqlite"] }
 dash-spv = { git = "https://github.com/dashpay/rust-dashcore", rev = "70d4bf8e36057c58e02d56769a6e9760f701dd06" }
 dash-network-seeds = { git = "https://github.com/dashpay/rust-dashcore", rev = "70d4bf8e36057c58e02d56769a6e9760f701dd06" }
-rs-sdk-trusted-context-provider = { git = "https://github.com/dashpay/platform.git", tag = "v4.1.1" }
+# `withdrawals-contract`: Drive verifies a shielded withdrawal's proof against
+# the withdrawals system contract, which the provider only knows when this
+# feature compiles it in. Without it the withdrawal lands and the call errors.
+rs-sdk-trusted-context-provider = { git = "https://github.com/dashpay/platform.git", tag = "v4.1.1", features = ["withdrawals-contract"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 platform-wallet = { git = "https://github.com/dashpay/platform.git", tag = "v4.1.1", features = ["shielded"] }
 async-trait = "0.1"

@@ -172,9 +172,10 @@ export class Synchronizer {
    * no other way to learn the outpoint `resumeShieldFromAssetLock` needs, since
    * the failing call returns an error rather than the lock it broadcast.
    *
-   * Locks live only in memory: the persister writes their rows but its `load`
-   * never reads them back, so this is empty on a fresh open however much
-   * history the store holds.
+   * The list survives a restart. Opening a wallet on a store that already
+   * holds its history rebuilds the locks from the wallet's chain records, each
+   * with the status `recovered_from_chain`. A lock this store saw consumed is
+   * left out of that rebuild.
    */
   async trackedAssetLocks(): Promise<AssetLock[]> {
     return await this.addon.trackedAssetLocks(this.alias)

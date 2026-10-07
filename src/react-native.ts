@@ -6,6 +6,8 @@ import {
 
 import {
   Addresses,
+  AssetLock,
+  CoreBalance,
   CreateTransferOpts,
   InitializerConfig,
   Network,
@@ -108,6 +110,80 @@ export class Synchronizer {
 
   async deriveShieldedAddress(): Promise<Addresses> {
     return RNDashShielded.deriveShieldedAddress(this.alias)
+  }
+
+  async coreReceiveAddress(account: number = 0): Promise<string> {
+    return RNDashShielded.coreReceiveAddress(this.alias, account)
+  }
+
+  async startCoreSync(fromHeight: number): Promise<void> {
+    await RNDashShielded.startCoreSync(this.alias, fromHeight)
+  }
+
+  async coreBalance(): Promise<CoreBalance> {
+    return RNDashShielded.coreBalance(this.alias)
+  }
+
+  async shieldFromAssetLock(
+    amountDuffs: string,
+    mnemonicSeed: string,
+    accountIndex: number = 0
+  ): Promise<string> {
+    return RNDashShielded.shieldFromAssetLock(
+      this.alias,
+      amountDuffs,
+      accountIndex,
+      mnemonicSeed
+    )
+  }
+
+  async platformReceiveAddress(account: number = 0): Promise<string> {
+    return RNDashShielded.platformReceiveAddress(this.alias, account)
+  }
+
+  async trackedAssetLocks(): Promise<AssetLock[]> {
+    return RNDashShielded.trackedAssetLocks(this.alias)
+  }
+
+  async resumeShieldFromAssetLock(
+    txid: string,
+    vout: number,
+    mnemonicSeed: string
+  ): Promise<string> {
+    return RNDashShielded.resumeShieldFromAssetLock(
+      this.alias,
+      txid,
+      vout,
+      mnemonicSeed
+    )
+  }
+
+  async unshield(
+    toAddress: string,
+    amountCredits: string,
+    mnemonicSeed: string
+  ): Promise<string> {
+    return RNDashShielded.unshield(
+      this.alias,
+      toAddress,
+      amountCredits,
+      mnemonicSeed
+    )
+  }
+
+  async shieldedWithdraw(
+    toCoreAddress: string,
+    amountCredits: string,
+    mnemonicSeed: string,
+    coreFeePerByte: number = 1
+  ): Promise<string> {
+    return RNDashShielded.shieldedWithdraw(
+      this.alias,
+      toCoreAddress,
+      amountCredits,
+      coreFeePerByte,
+      mnemonicSeed
+    )
   }
 
   async proposeTransfer(opts: ProposeTransferOpts): Promise<ProposalSuccess> {

@@ -1,0 +1,5 @@
+/lib/
+/node.js
+/prebuilds/
+/rust/target/
+/ios/.uniffi-generated/

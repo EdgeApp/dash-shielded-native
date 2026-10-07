@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "src/**/*",
+    "scripts/**/*",
+    "node.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "lib",
+    "rust"
+  ]
+}

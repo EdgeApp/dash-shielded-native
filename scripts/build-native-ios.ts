@@ -20,7 +20,7 @@ function run(cmd: string, args: string[], cwd: string): Promise<void> {
     child.on('error', reject)
     child.on('exit', code => {
       if (code === 0) resolve()
-      else reject(new Error(`${cmd} ${args.join(' ')} exited ${code}`))
+      else reject(new Error(`${cmd} ${args.join(' ')} exited ${String(code)}`))
     })
   })
 }
@@ -93,7 +93,13 @@ async function main(): Promise<void> {
     [
       '-create-xcframework',
       '-library',
-      join(rustDir, 'target', 'aarch64-apple-ios', 'release', 'libdashshielded.a'),
+      join(
+        rustDir,
+        'target',
+        'aarch64-apple-ios',
+        'release',
+        'libdashshielded.a'
+      ),
       '-headers',
       deviceHeaders,
       '-library',

@@ -11,11 +11,8 @@ async function main(): Promise<void> {
   const mnemonic =
     'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon art'
 
-  const validDummy = await io.Tools.isValidAddress(
-    'not-an-address',
-    'testnet'
-  )
-  if (validDummy !== false) {
+  const validDummy = await io.Tools.isValidAddress('not-an-address', 'testnet')
+  if (validDummy) {
     throw new Error('isValidAddress should reject garbage')
   }
 
@@ -29,7 +26,7 @@ async function main(): Promise<void> {
     throw new Error(`unexpected testnet address ${address}`)
   }
   const addressOk = await io.Tools.isValidAddress(address, 'testnet')
-  if (addressOk !== true) {
+  if (!addressOk) {
     throw new Error(`derived address failed validation: ${address}`)
   }
 
@@ -44,17 +41,28 @@ async function main(): Promise<void> {
   })
   const derived = await synchronizer.deriveShieldedAddress()
   if (derived.shieldedAddress !== address) {
-    throw new Error(
-      `address mismatch ${derived.shieldedAddress} vs ${address}`
-    )
+    throw new Error(`address mismatch ${derived.shieldedAddress} vs ${address}`)
   }
   const balance = await synchronizer.getBalance()
   if (balance.totalCredits !== '0') {
     throw new Error(`expected empty balance, got ${balance.totalCredits}`)
   }
 
+  // Building the Halo 2 proving key is the heaviest thing this module does and
+  // the only part a spend cannot skip, so the smoke test proves it completes
+  // rather than leaving it to be discovered on a user's first send.
+  if (await io.Tools.isProverReady()) {
+    throw new Error('prover reported ready before warm-up')
+  }
+  const proverStart = Date.now()
+  await io.Tools.warmUpProver()
+  const proverMs = Date.now() - proverStart
+  if (!(await io.Tools.isProverReady())) {
+    throw new Error('prover did not become ready after warm-up')
+  }
+
   console.log('smoke-node ok')
-  console.log(JSON.stringify({ address, viewing }, null, 2))
+  console.log(JSON.stringify({ address, viewing, proverMs }, null, 2))
   await synchronizer.stop()
 }
 

@@ -141,6 +141,12 @@ pub struct CoreBalance {
 /// `chain_locked`, or `consumed`. Anything short of `consumed` is value sitting
 /// in a lock that never became a shielded note, which is what
 /// `resume_shield_from_asset_lock` takes.
+///
+/// A lock rebuilt from the wallet's chain records in a later process reads
+/// `recovered_from_chain`: Core has finalized it, and the wallet cannot tell
+/// locally whether Platform already consumed it. Resuming one is how a host
+/// finds out. A stranded lock shields; a spent one returns an error, moves no
+/// value and keeps this status.
 pub struct AssetLock {
     pub txid: String,
     pub vout: u32,
@@ -470,14 +476,11 @@ pub async fn initialize(
     // Hydrate anything this alias persisted on a previous open BEFORE creating a
     // wallet from the seed, so a restored wallet is reused rather than rebuilt.
     //
-    // This restores nothing yet, and the reason is upstream, not here:
-    // `SqlitePersister::load` declares `LOAD_UNIMPLEMENTED =
-    // ["ClientStartState::wallets"]` and only rebuilds `platform_addresses`. It
-    // writes durable `asset_locks` rows and never reads them back, so tracked
-    // asset locks cannot survive a restart and `FromExistingAssetLock` can only
-    // find a lock inside the process that broadcast it. Calling load first is
-    // still correct: it costs one query, and it is what makes resume work across
-    // restarts the moment upstream lands the rehydration path.
+    // The load brings back the wallet with its Core balance, its address pool
+    // and its tracked asset locks, which is what lets
+    // `resume_shield_from_asset_lock` find a lock a previous process broadcast.
+    // The restored address pool also remembers which receive addresses were
+    // handed out, so `core_receive_address` continues from the next unused one.
     //
     // Best-effort: a fresh store has nothing to load, and a load failure must
     // not stop a wallet from opening.
@@ -567,18 +570,22 @@ pub async fn stop(alias: String) -> WalletResult<String> {
     // manager alive past the removal. Dropping it while the shielded-sync task
     // still owns a tokio timer tears the runtime down underneath that task, and
     // the timer entry panics with "A Tokio 1.x context was found, but it is
-    // being shutdown". Signalling the loop and awaiting `quiesce` lets the task
-    // retire on its own before anything is dropped.
+    // being shutdown". `shutdown` drains every sync pass and joins the worker
+    // threads first, so nothing is dropped while a task can still run.
     let manager = {
         let mut clients = CLIENTS.lock().await;
         clients.remove(&alias).and_then(|slot| slot.manager)
     };
 
     if let Some(manager) = manager {
-        let sync = manager.shielded_sync_arc();
-        sync.stop();
-        sync.quiesce().await;
-        manager.shutdown().await;
+        manager.shielded_sync_arc().stop();
+        // Each drain and join in `shutdown` has a bounded budget, and the
+        // report marks any worker that outlived its budget. That means the
+        // close was not clean, so report a failure instead of "STOPPED".
+        let report = manager.shutdown().await;
+        if !report.all_clean() {
+            return Err(format!("stop {alias}: shutdown not clean: {report:?}"));
+        }
     }
 
     Ok("STOPPED".to_string())
@@ -971,10 +978,10 @@ pub async fn shield_from_asset_lock(
 /// not the lock it had just broadcast. Enumerating them is what turns resume
 /// from an entry point into a usable recovery path.
 ///
-/// Locks live only in memory today. `SqlitePersister::load` still carries the
-/// upstream TODO that leaves `ClientStartState::wallets` unpopulated
-/// (`LOAD_UNIMPLEMENTED`), so the rows it writes are never read back and this
-/// list is empty on a fresh open however much history the store holds.
+/// The list survives a restart. Opening a wallet on a store that already holds
+/// its history rebuilds the locks from the wallet's chain records, each with
+/// the status `recovered_from_chain`. A lock this store saw consumed is left
+/// out of that rebuild.
 pub async fn tracked_asset_locks(alias: String) -> WalletResult<Vec<AssetLock>> {
     let (manager, wallet) = {
         let clients = CLIENTS.lock().await;
@@ -1005,6 +1012,7 @@ pub async fn tracked_asset_locks(alias: String) -> WalletResult<Vec<AssetLock>> 
                 2 => "instant_send_locked",
                 3 => "chain_locked",
                 4 => "consumed",
+                5 => "recovered_from_chain",
                 _ => "unknown",
             }
             .to_string(),
@@ -1021,9 +1029,14 @@ pub async fn tracked_asset_locks(alias: String) -> WalletResult<Vec<AssetLock>> 
 /// `txid:vout` instead, which is the only path back for those funds and the
 /// reason an auto-shielding host can retry safely.
 ///
-/// Bounded by the same upstream gap as `tracked_asset_locks`: the lock has to
-/// still be in memory, so this recovers a failed shield within a process, not
-/// one whose process already exited.
+/// The lock does not have to come from this process. A wallet reopened on its
+/// store lists the locks an earlier process broadcast, and a stranded one
+/// resumes here.
+///
+/// A lock Platform already consumed fails instead. Upstream then tries to
+/// record the lock as consumption-unknown, which needs the `wallet_restore`
+/// persistence capability the SQLite persister does not attest, so the error a
+/// host sees names that capability and not the consumed lock.
 pub async fn resume_shield_from_asset_lock(
     alias: String,
     txid: String,

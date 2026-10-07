@@ -604,8 +604,28 @@ pub async fn start_sync(alias: String) -> WalletResult<()> {
             .and_then(|slot| slot.wallet.clone())
     };
     tokio::spawn(async move {
-        if let Some(coordinator) = manager.shielded_coordinator().await {
-            let summary = coordinator.sync(true).await;
+        if manager.shielded_coordinator().await.is_some() {
+            // Go through the sync manager, never the coordinator. `sync_now`
+            // holds the manager-wide in-flight slot, so this pass cannot
+            // overlap the loop's own first pass. Two overlapping passes both
+            // snapshot the tree size before either appends, so each appends
+            // every commitment and the local tree ends up ahead of Platform:
+            // no later note is ever witnessable, and every spend after the
+            // first fails with "no recorded anchor".
+            let sync = manager.shielded_sync_arc();
+            let summary = loop {
+                let summary = sync.sync_now(true).await;
+                // An empty summary means the pass was skipped because one
+                // was already in flight. Wait it out, then run ours.
+                if !summary.is_empty() || !sync.is_running() {
+                    break summary;
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+            };
+            if summary.is_empty() {
+                // Stopped before any pass of ours ran: nothing to record.
+                return;
+            }
             if std::env::var("DASH_SHIELDED_DEBUG").is_ok() {
                 eprintln!("[dash-shielded] sync summary: {summary:?}");
                 // Local tree size vs what the pass walked: if the chain has

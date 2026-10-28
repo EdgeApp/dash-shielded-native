@@ -3,6 +3,8 @@ import { mkdirSync } from 'fs'
 import { loadNativeAddon, NativeDashAddon } from './load-addon'
 import {
   Addresses,
+  AssetLock,
+  CoreBalance,
   CreateTransferOpts,
   InitializerConfig,
   Network,
@@ -83,7 +85,7 @@ export class Synchronizer {
 
   async stop(): Promise<string> {
     this.unsubscribe()
-    return this.addon.stop(this.alias)
+    return await this.addon.stop(this.alias)
   }
 
   async initialize(config: InitializerConfig): Promise<void> {
@@ -108,7 +110,126 @@ export class Synchronizer {
   }
 
   async deriveShieldedAddress(): Promise<Addresses> {
-    return this.addon.deriveShieldedAddress(this.alias)
+    return await this.addon.deriveShieldedAddress(this.alias)
+  }
+
+  /**
+   * Next unused transparent (L1) receive address, for getting value into the
+   * wallet in the first place. The shielded pool is only reachable from L1, so
+   * a fresh wallet has to be funded here before any shielded operation works.
+   */
+  async coreReceiveAddress(account: number = 0): Promise<string> {
+    return await this.addon.coreReceiveAddress(this.alias, account)
+  }
+
+  /**
+   * Next unused transparent Platform address, the counterpart to
+   * `coreReceiveAddress` one layer up. This is where `unshield` puts value that
+   * leaves the Orchard pool but stays on Platform.
+   */
+  async platformReceiveAddress(account: number = 0): Promise<string> {
+    return await this.addon.platformReceiveAddress(this.alias, account)
+  }
+
+  /**
+   * Start the Core (L1) SPV sync. The Platform connection cannot see L1, so
+   * transparent balance stays at zero until this runs. `fromHeight` skips
+   * history older than the wallet.
+   */
+  async startCoreSync(fromHeight: number): Promise<void> {
+    await this.addon.startCoreSync(this.alias, fromHeight)
+  }
+
+  async coreBalance(): Promise<CoreBalance> {
+    return await this.addon.coreBalance(this.alias)
+  }
+
+  /**
+   * Move transparent balance into the shielded pool through an asset lock.
+   *
+   * Takes the seed per call rather than reusing the one `initialize` was given.
+   * An alias is not a secret, so a resident seed would make knowing the alias
+   * enough to move funds.
+   * Builds and broadcasts the L1 lock, waits for its InstantSend or ChainLock
+   * proof, then proves and broadcasts the shielding transition, so this takes
+   * seconds and needs a synced Core balance to spend.
+   */
+  async shieldFromAssetLock(
+    amountDuffs: string,
+    mnemonicSeed: string,
+    accountIndex: number = 0
+  ): Promise<string> {
+    return await this.addon.shieldFromAssetLock(
+      this.alias,
+      amountDuffs,
+      accountIndex,
+      mnemonicSeed
+    )
+  }
+
+  /**
+   * The asset locks this wallet is tracking. A host that crashed mid-shield has
+   * no other way to learn the outpoint `resumeShieldFromAssetLock` needs, since
+   * the failing call returns an error rather than the lock it broadcast.
+   *
+   * The list survives a restart. Opening a wallet on a store that already
+   * holds its history rebuilds the locks from the wallet's chain records, each
+   * with the status `recovered_from_chain`. A lock this store saw consumed is
+   * left out of that rebuild.
+   */
+  async trackedAssetLocks(): Promise<AssetLock[]> {
+    return await this.addon.trackedAssetLocks(this.alias)
+  }
+
+  /**
+   * Finish a shield whose L1 asset lock is already on chain. A failure between
+   * broadcasting the lock and proving the transition strands the locked value,
+   * and only resuming that outpoint recovers it; building a fresh lock cannot.
+   */
+  async resumeShieldFromAssetLock(
+    txid: string,
+    vout: number,
+    mnemonicSeed: string
+  ): Promise<string> {
+    return await this.addon.resumeShieldFromAssetLock(
+      this.alias,
+      txid,
+      vout,
+      mnemonicSeed
+    )
+  }
+
+  /** Move shielded value out to a transparent Platform address. */
+  async unshield(
+    toAddress: string,
+    amountCredits: string,
+    mnemonicSeed: string
+  ): Promise<string> {
+    return await this.addon.unshield(
+      this.alias,
+      toAddress,
+      amountCredits,
+      mnemonicSeed
+    )
+  }
+
+  /**
+   * Move shielded value out to a Core L1 address. `coreFeePerByte` prices the
+   * L1 transaction the network builds on the far side, in duffs per byte.
+   */
+  async shieldedWithdraw(
+    toCoreAddress: string,
+    amountCredits: string,
+    mnemonicSeed: string,
+    coreFeePerByte: number = 1
+  ): Promise<string> {
+    return await this.addon.shieldedWithdraw(
+      this.alias,
+      toCoreAddress,
+      amountCredits,
+      coreFeePerByte,
+      mnemonicSeed
+    )
   }
 
   async getBalance(): Promise<{
@@ -235,9 +356,7 @@ export const makeSynchronizer = async (
   return synchronizer
 }
 
-export function makeNodeDashShieldedModule(
-  opts: MakeNodeDashShieldedOpts
-): {
+export function makeNodeDashShieldedModule(opts: MakeNodeDashShieldedOpts): {
   Tools: typeof Tools
   makeSynchronizer: typeof makeSynchronizer
 } {

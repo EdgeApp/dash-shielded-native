@@ -41,6 +41,58 @@ enum EdgeDashClient {
     try deriveShieldedAddress(alias: alias)
   }
 
+  static func rustCoreReceiveAddress(alias: String, account: UInt32) throws -> String {
+    try coreReceiveAddress(alias: alias, account: account)
+  }
+
+  static func rustStartCoreSync(alias: String, fromHeight: UInt32) throws {
+    try startCoreSync(alias: alias, fromHeight: fromHeight)
+  }
+
+  static func rustCoreBalance(alias: String) throws -> CoreBalance {
+    try coreBalance(alias: alias)
+  }
+
+  static func rustShieldFromAssetLock(
+    alias: String, amountDuffs: String, accountIndex: UInt32, mnemonicSeed: String
+  ) throws -> String {
+    try shieldFromAssetLock(
+      alias: alias, amountDuffs: amountDuffs, accountIndex: accountIndex,
+      mnemonicSeed: mnemonicSeed)
+  }
+
+  static func rustPlatformReceiveAddress(alias: String, account: UInt32) throws -> String {
+    try platformReceiveAddress(alias: alias, account: account)
+  }
+
+  static func rustTrackedAssetLocks(alias: String) throws -> [AssetLock] {
+    try trackedAssetLocks(alias: alias)
+  }
+
+  static func rustResumeShieldFromAssetLock(
+    alias: String, txid: String, vout: UInt32, mnemonicSeed: String
+  ) throws -> String {
+    try resumeShieldFromAssetLock(
+      alias: alias, txid: txid, vout: vout, mnemonicSeed: mnemonicSeed)
+  }
+
+  static func rustUnshield(
+    alias: String, toAddress: String, amountCredits: String, mnemonicSeed: String
+  ) throws -> String {
+    try unshield(
+      alias: alias, toAddress: toAddress, amountCredits: amountCredits,
+      mnemonicSeed: mnemonicSeed)
+  }
+
+  static func rustShieldedWithdraw(
+    alias: String, toCoreAddress: String, amountCredits: String, coreFeePerByte: UInt32,
+    mnemonicSeed: String
+  ) throws -> String {
+    try shieldedWithdraw(
+      alias: alias, toCoreAddress: toCoreAddress, amountCredits: amountCredits,
+      coreFeePerByte: coreFeePerByte, mnemonicSeed: mnemonicSeed)
+  }
+
   static func rustIsValidAddress(address: String, network: String) -> Bool {
     isValidAddress(address: address, network: network)
   }

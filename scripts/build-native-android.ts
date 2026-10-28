@@ -28,7 +28,7 @@ function run(
     child.on('error', reject)
     child.on('exit', code => {
       if (code === 0) resolve()
-      else reject(new Error(`${cmd} ${args.join(' ')} exited ${code}`))
+      else reject(new Error(`${cmd} ${args.join(' ')} exited ${String(code)}`))
     })
   })
 }
@@ -42,6 +42,7 @@ async function patchKotlinErrorField(path: string): Promise<void> {
   const source = await readFile(path, 'utf8')
   const patched = source
     .replace(
+      // eslint-disable-next-line no-template-curly-in-string -- Kotlin source text
       'val `message`: kotlin.String\n        ) : DashException() {\n        override val message\n            get() = "message=${ `message` }"',
       'val errorMessage: kotlin.String\n        ) : DashException() {\n        override val message\n            get() = errorMessage'
     )
@@ -119,46 +120,60 @@ async function main(): Promise<void> {
 
   await patchKotlinErrorField(join(androidJava, 'uniffi/dash/dash.kt'))
 
-  // arm64-v8a only. RNDashShieldedModule.kt sets
-  // `uniffi.component.dash.libraryOverride` to "dashshielded", so the ABI
-  // directory needs exactly libdashshielded.so — no libuniffi_dash.so copy.
-  const abi = 'arm64-v8a'
-  const target = 'aarch64-linux-android'
-  const toolchainBin = await findToolchainBin(ndk)
-  await run(
-    'cargo',
-    [
-      'ndk',
-      '-t',
-      abi,
-      'build',
-      '--release',
-      '--no-default-features',
-      '--features',
-      'uniffi-backend'
-    ],
-    rustDir,
+  // Both ABIs edge-react-gui ships (its abiFilters are 'armeabi-v7a' and
+  // 'arm64-v8a'). RNDashShieldedModule.kt sets
+  // `uniffi.component.dash.libraryOverride` to "dashshielded", so each ABI
+  // directory needs exactly libdashshielded.so, no libuniffi_dash.so copy.
+  const abis = [
     {
-      ANDROID_NDK_HOME: ndk,
-      // Android 15 ships 16 KB pages; link for it or the loader rejects us.
-      CARGO_TARGET_AARCH64_LINUX_ANDROID_RUSTFLAGS:
-        '-C link-arg=-Wl,-z,max-page-size=16384 -C link-arg=-Wl,-z,common-page-size=16384',
-      // Dependencies that compile C (rs-x11-hash) go through the `cc` crate.
-      // cargo-ndk points it at a bare `clang` and expects the NDK toolchain
-      // to be first on PATH; without that it resolves to host clang, which
-      // has no Android sysroot and dies on a missing `stdlib.h`. Setting
-      // CC_<target> here does not help — cargo-ndk overwrites it.
-      PATH: `${toolchainBin}:${process.env.PATH ?? ''}`
+      abi: 'arm64-v8a',
+      target: 'aarch64-linux-android',
+      rustflagsVar: 'AARCH64_LINUX_ANDROID'
+    },
+    {
+      abi: 'armeabi-v7a',
+      target: 'armv7-linux-androideabi',
+      rustflagsVar: 'ARMV7_LINUX_ANDROIDEABI'
     }
-  )
+  ]
+  const toolchainBin = await findToolchainBin(ndk)
 
-  const destDir = join(androidJni, abi)
-  await mkdir(destDir, { recursive: true })
-  await copyFile(
-    join(rustDir, 'target', target, 'release', 'libdashshielded.so'),
-    join(destDir, 'libdashshielded.so')
-  )
-  console.log(`Wrote ${join(destDir, 'libdashshielded.so')}`)
+  for (const { abi, target, rustflagsVar } of abis) {
+    await run(
+      'cargo',
+      [
+        'ndk',
+        '-t',
+        abi,
+        'build',
+        '--release',
+        '--no-default-features',
+        '--features',
+        'uniffi-backend'
+      ],
+      rustDir,
+      {
+        ANDROID_NDK_HOME: ndk,
+        // Android 15 ships 16 KB pages; link for it or the loader rejects us.
+        [`CARGO_TARGET_${rustflagsVar}_RUSTFLAGS`]:
+          '-C link-arg=-Wl,-z,max-page-size=16384 -C link-arg=-Wl,-z,common-page-size=16384',
+        // Dependencies that compile C (rs-x11-hash) go through the `cc` crate.
+        // cargo-ndk points it at a bare `clang` and expects the NDK toolchain
+        // to be first on PATH; without that it resolves to host clang, which
+        // has no Android sysroot and dies on a missing `stdlib.h`. Setting
+        // CC_<target> here does not help, since cargo-ndk overwrites it.
+        PATH: `${toolchainBin}:${process.env.PATH ?? ''}`
+      }
+    )
+
+    const destDir = join(androidJni, abi)
+    await mkdir(destDir, { recursive: true })
+    await copyFile(
+      join(rustDir, 'target', target, 'release', 'libdashshielded.so'),
+      join(destDir, 'libdashshielded.so')
+    )
+    console.log(`Wrote ${join(destDir, 'libdashshielded.so')}`)
+  }
 }
 
 main().catch((error: unknown) => {

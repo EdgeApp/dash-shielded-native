@@ -17,6 +17,19 @@ dictionary Transaction {
   sequence<string> memos;
 };
 
+dictionary CoreBalance {
+  string confirmed_duffs;
+  string unconfirmed_duffs;
+  string total_duffs;
+  u32 synced_height;
+};
+
+dictionary AssetLock {
+  string txid;
+  u32 vout;
+  string status;
+};
+
 dictionary Poll {
   string alias;
   string status;
@@ -52,6 +65,54 @@ namespace dash {
 
   [Throws=DashError]
   Addresses derive_shielded_address(string alias);
+
+  [Throws=DashError]
+  string core_receive_address(string alias, u32 account);
+
+  [Throws=DashError]
+  void start_core_sync(string alias, u32 from_height);
+
+  [Throws=DashError]
+  CoreBalance core_balance(string alias);
+
+  [Throws=DashError]
+  string shield_from_asset_lock(
+    string alias,
+    string amount_duffs,
+    u32 account_index,
+    string mnemonic_seed
+  );
+
+  [Throws=DashError]
+  string platform_receive_address(string alias, u32 account);
+
+  [Throws=DashError]
+  sequence<AssetLock> tracked_asset_locks(string alias);
+
+  [Throws=DashError]
+  string resume_shield_from_asset_lock(
+    string alias,
+    string txid,
+    u32 vout,
+    string mnemonic_seed
+  );
+
+  [Throws=DashError]
+  string unshield(
+    string alias,
+    string to_address,
+    string amount_credits,
+    string mnemonic_seed
+  );
+
+  [Throws=DashError]
+  string shielded_withdraw(
+    string alias,
+    string to_core_address,
+    string amount_credits,
+    u32 core_fee_per_byte,
+    string mnemonic_seed
+  );
 
   boolean is_valid_address(string address, string network);
 

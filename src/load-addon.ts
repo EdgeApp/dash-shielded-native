@@ -15,13 +15,48 @@ export interface NativeDashAddon {
   startSync: (alias: string) => Promise<void>
   stopSync: (alias: string) => Promise<void>
   deriveShieldedAddress: (alias: string) => Promise<{ shieldedAddress: string }>
+  coreReceiveAddress: (alias: string, account: number) => Promise<string>
+  platformReceiveAddress: (alias: string, account: number) => Promise<string>
+  startCoreSync: (alias: string, fromHeight: number) => Promise<void>
+  coreBalance: (alias: string) => Promise<{
+    confirmedDuffs: string
+    unconfirmedDuffs: string
+    totalDuffs: string
+    syncedHeight: number
+  }>
+  shieldFromAssetLock: (
+    alias: string,
+    amountDuffs: string,
+    accountIndex: number,
+    mnemonicSeed: string
+  ) => Promise<string>
+  trackedAssetLocks: (
+    alias: string
+  ) => Promise<Array<{ txid: string; vout: number; status: string }>>
+  resumeShieldFromAssetLock: (
+    alias: string,
+    txid: string,
+    vout: number,
+    mnemonicSeed: string
+  ) => Promise<string>
+  unshield: (
+    alias: string,
+    toAddress: string,
+    amountCredits: string,
+    mnemonicSeed: string
+  ) => Promise<string>
+  shieldedWithdraw: (
+    alias: string,
+    toCoreAddress: string,
+    amountCredits: string,
+    coreFeePerByte: number,
+    mnemonicSeed: string
+  ) => Promise<string>
   isValidAddress: (address: string, network: string) => boolean
   deriveViewingKey: (mnemonicSeed: string, network: string) => string
   warmUpProver: () => Promise<void>
   isProverReady: () => boolean
-  poll: (
-    alias: string
-  ) => Promise<{
+  poll: (alias: string) => Promise<{
     alias: string
     status: string
     scanProgress: number
@@ -80,6 +115,9 @@ export function loadNativeAddon(): NativeDashAddon {
         missing.push(candidate)
         continue
       }
+      // The addon path is resolved at runtime from the platform triple, so this
+      // cannot be a static import.
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const mod = require(candidate) as NativeDashAddon
       if (typeof mod.initialize !== 'function') continue
       cached = mod

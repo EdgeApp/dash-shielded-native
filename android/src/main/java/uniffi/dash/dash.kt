@@ -739,6 +739,24 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -754,7 +772,11 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 // when the library is loaded.
 internal interface IntegrityCheckingUniffiLib : Library {
     // Integrity check functions only
-    fun uniffi_dashshielded_checksum_func_create_transfer(
+    fun uniffi_dashshielded_checksum_func_core_balance(
+): Short
+fun uniffi_dashshielded_checksum_func_core_receive_address(
+): Short
+fun uniffi_dashshielded_checksum_func_create_transfer(
 ): Short
 fun uniffi_dashshielded_checksum_func_derive_shielded_address(
 ): Short
@@ -768,17 +790,31 @@ fun uniffi_dashshielded_checksum_func_is_prover_ready(
 ): Short
 fun uniffi_dashshielded_checksum_func_is_valid_address(
 ): Short
+fun uniffi_dashshielded_checksum_func_platform_receive_address(
+): Short
 fun uniffi_dashshielded_checksum_func_poll(
 ): Short
 fun uniffi_dashshielded_checksum_func_propose_transfer(
 ): Short
+fun uniffi_dashshielded_checksum_func_resume_shield_from_asset_lock(
+): Short
 fun uniffi_dashshielded_checksum_func_set_document_directory(
+): Short
+fun uniffi_dashshielded_checksum_func_shield_from_asset_lock(
+): Short
+fun uniffi_dashshielded_checksum_func_shielded_withdraw(
+): Short
+fun uniffi_dashshielded_checksum_func_start_core_sync(
 ): Short
 fun uniffi_dashshielded_checksum_func_start_sync(
 ): Short
 fun uniffi_dashshielded_checksum_func_stop(
 ): Short
 fun uniffi_dashshielded_checksum_func_stop_sync(
+): Short
+fun uniffi_dashshielded_checksum_func_tracked_asset_locks(
+): Short
+fun uniffi_dashshielded_checksum_func_unshield(
 ): Short
 fun uniffi_dashshielded_checksum_func_warm_up_prover(
 ): Short
@@ -827,7 +863,11 @@ internal interface UniffiLib : Library {
     }
 
     // FFI functions
-    fun uniffi_dashshielded_fn_func_create_transfer(`alias`: RustBuffer.ByValue,`proposalId`: RustBuffer.ByValue,`mnemonicSeed`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    fun uniffi_dashshielded_fn_func_core_balance(`alias`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_dashshielded_fn_func_core_receive_address(`alias`: RustBuffer.ByValue,`account`: Int,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_dashshielded_fn_func_create_transfer(`alias`: RustBuffer.ByValue,`proposalId`: RustBuffer.ByValue,`mnemonicSeed`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_dashshielded_fn_func_derive_shielded_address(`alias`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -841,11 +881,21 @@ fun uniffi_dashshielded_fn_func_is_prover_ready(uniffi_out_err: UniffiRustCallSt
 ): Byte
 fun uniffi_dashshielded_fn_func_is_valid_address(`address`: RustBuffer.ByValue,`network`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Byte
+fun uniffi_dashshielded_fn_func_platform_receive_address(`alias`: RustBuffer.ByValue,`account`: Int,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_dashshielded_fn_func_poll(`alias`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_dashshielded_fn_func_propose_transfer(`alias`: RustBuffer.ByValue,`amountCredits`: RustBuffer.ByValue,`toAddress`: RustBuffer.ByValue,`memo`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+fun uniffi_dashshielded_fn_func_resume_shield_from_asset_lock(`alias`: RustBuffer.ByValue,`txid`: RustBuffer.ByValue,`vout`: Int,`mnemonicSeed`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_dashshielded_fn_func_set_document_directory(`path`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_dashshielded_fn_func_shield_from_asset_lock(`alias`: RustBuffer.ByValue,`amountDuffs`: RustBuffer.ByValue,`accountIndex`: Int,`mnemonicSeed`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_dashshielded_fn_func_shielded_withdraw(`alias`: RustBuffer.ByValue,`toCoreAddress`: RustBuffer.ByValue,`amountCredits`: RustBuffer.ByValue,`coreFeePerByte`: Int,`mnemonicSeed`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_dashshielded_fn_func_start_core_sync(`alias`: RustBuffer.ByValue,`fromHeight`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 fun uniffi_dashshielded_fn_func_start_sync(`alias`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
@@ -853,6 +903,10 @@ fun uniffi_dashshielded_fn_func_stop(`alias`: RustBuffer.ByValue,uniffi_out_err:
 ): RustBuffer.ByValue
 fun uniffi_dashshielded_fn_func_stop_sync(`alias`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+fun uniffi_dashshielded_fn_func_tracked_asset_locks(`alias`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_dashshielded_fn_func_unshield(`alias`: RustBuffer.ByValue,`toAddress`: RustBuffer.ByValue,`amountCredits`: RustBuffer.ByValue,`mnemonicSeed`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_dashshielded_fn_func_warm_up_prover(uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 fun ffi_dashshielded_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -981,6 +1035,12 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
+    if (lib.uniffi_dashshielded_checksum_func_core_balance() != 19751.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_dashshielded_checksum_func_core_receive_address() != 65080.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_dashshielded_checksum_func_create_transfer() != 10651.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1002,13 +1062,28 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_dashshielded_checksum_func_is_valid_address() != 228.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_dashshielded_checksum_func_platform_receive_address() != 21146.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_dashshielded_checksum_func_poll() != 4874.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_dashshielded_checksum_func_propose_transfer() != 1851.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_dashshielded_checksum_func_resume_shield_from_asset_lock() != 25321.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_dashshielded_checksum_func_set_document_directory() != 41116.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_dashshielded_checksum_func_shield_from_asset_lock() != 11151.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_dashshielded_checksum_func_shielded_withdraw() != 9474.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_dashshielded_checksum_func_start_core_sync() != 10895.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_dashshielded_checksum_func_start_sync() != 56361.toShort()) {
@@ -1018,6 +1093,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_dashshielded_checksum_func_stop_sync() != 6076.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_dashshielded_checksum_func_tracked_asset_locks() != 28174.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_dashshielded_checksum_func_unshield() != 14191.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_dashshielded_checksum_func_warm_up_prover() != 10994.toShort()) {
@@ -1281,6 +1362,82 @@ public object FfiConverterTypeAddresses: FfiConverterRustBuffer<Addresses> {
 
 
 
+data class AssetLock (
+    var `txid`: kotlin.String, 
+    var `vout`: kotlin.UInt, 
+    var `status`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAssetLock: FfiConverterRustBuffer<AssetLock> {
+    override fun read(buf: ByteBuffer): AssetLock {
+        return AssetLock(
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AssetLock) = (
+            FfiConverterString.allocationSize(value.`txid`) +
+            FfiConverterUInt.allocationSize(value.`vout`) +
+            FfiConverterString.allocationSize(value.`status`)
+    )
+
+    override fun write(value: AssetLock, buf: ByteBuffer) {
+            FfiConverterString.write(value.`txid`, buf)
+            FfiConverterUInt.write(value.`vout`, buf)
+            FfiConverterString.write(value.`status`, buf)
+    }
+}
+
+
+
+data class CoreBalance (
+    var `confirmedDuffs`: kotlin.String, 
+    var `unconfirmedDuffs`: kotlin.String, 
+    var `totalDuffs`: kotlin.String, 
+    var `syncedHeight`: kotlin.UInt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeCoreBalance: FfiConverterRustBuffer<CoreBalance> {
+    override fun read(buf: ByteBuffer): CoreBalance {
+        return CoreBalance(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: CoreBalance) = (
+            FfiConverterString.allocationSize(value.`confirmedDuffs`) +
+            FfiConverterString.allocationSize(value.`unconfirmedDuffs`) +
+            FfiConverterString.allocationSize(value.`totalDuffs`) +
+            FfiConverterUInt.allocationSize(value.`syncedHeight`)
+    )
+
+    override fun write(value: CoreBalance, buf: ByteBuffer) {
+            FfiConverterString.write(value.`confirmedDuffs`, buf)
+            FfiConverterString.write(value.`unconfirmedDuffs`, buf)
+            FfiConverterString.write(value.`totalDuffs`, buf)
+            FfiConverterUInt.write(value.`syncedHeight`, buf)
+    }
+}
+
+
+
 data class Poll (
     var `alias`: kotlin.String, 
     var `status`: kotlin.String, 
@@ -1508,6 +1665,34 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeAssetLock: FfiConverterRustBuffer<List<AssetLock>> {
+    override fun read(buf: ByteBuffer): List<AssetLock> {
+        val len = buf.getInt()
+        return List<AssetLock>(len) {
+            FfiConverterTypeAssetLock.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<AssetLock>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeAssetLock.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<AssetLock>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeAssetLock.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeTransaction: FfiConverterRustBuffer<List<Transaction>> {
     override fun read(buf: ByteBuffer): List<Transaction> {
         val len = buf.getInt()
@@ -1529,6 +1714,26 @@ public object FfiConverterSequenceTypeTransaction: FfiConverterRustBuffer<List<T
         }
     }
 }
+    @Throws(DashException::class) fun `coreBalance`(`alias`: kotlin.String): CoreBalance {
+            return FfiConverterTypeCoreBalance.lift(
+    uniffiRustCallWithError(DashException) { _status ->
+    UniffiLib.INSTANCE.uniffi_dashshielded_fn_func_core_balance(
+        FfiConverterString.lower(`alias`),_status)
+}
+    )
+    }
+    
+
+    @Throws(DashException::class) fun `coreReceiveAddress`(`alias`: kotlin.String, `account`: kotlin.UInt): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(DashException) { _status ->
+    UniffiLib.INSTANCE.uniffi_dashshielded_fn_func_core_receive_address(
+        FfiConverterString.lower(`alias`),FfiConverterUInt.lower(`account`),_status)
+}
+    )
+    }
+    
+
     @Throws(DashException::class) fun `createTransfer`(`alias`: kotlin.String, `proposalId`: kotlin.String, `mnemonicSeed`: kotlin.String): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCallWithError(DashException) { _status ->
@@ -1596,6 +1801,16 @@ public object FfiConverterSequenceTypeTransaction: FfiConverterRustBuffer<List<T
     }
     
 
+    @Throws(DashException::class) fun `platformReceiveAddress`(`alias`: kotlin.String, `account`: kotlin.UInt): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(DashException) { _status ->
+    UniffiLib.INSTANCE.uniffi_dashshielded_fn_func_platform_receive_address(
+        FfiConverterString.lower(`alias`),FfiConverterUInt.lower(`account`),_status)
+}
+    )
+    }
+    
+
     @Throws(DashException::class) fun `poll`(`alias`: kotlin.String): Poll {
             return FfiConverterTypePoll.lift(
     uniffiRustCallWithError(DashException) { _status ->
@@ -1616,11 +1831,50 @@ public object FfiConverterSequenceTypeTransaction: FfiConverterRustBuffer<List<T
     }
     
 
+    @Throws(DashException::class) fun `resumeShieldFromAssetLock`(`alias`: kotlin.String, `txid`: kotlin.String, `vout`: kotlin.UInt, `mnemonicSeed`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(DashException) { _status ->
+    UniffiLib.INSTANCE.uniffi_dashshielded_fn_func_resume_shield_from_asset_lock(
+        FfiConverterString.lower(`alias`),FfiConverterString.lower(`txid`),FfiConverterUInt.lower(`vout`),FfiConverterString.lower(`mnemonicSeed`),_status)
+}
+    )
+    }
+    
+
     @Throws(DashException::class) fun `setDocumentDirectory`(`path`: kotlin.String)
         = 
     uniffiRustCallWithError(DashException) { _status ->
     UniffiLib.INSTANCE.uniffi_dashshielded_fn_func_set_document_directory(
         FfiConverterString.lower(`path`),_status)
+}
+    
+    
+
+    @Throws(DashException::class) fun `shieldFromAssetLock`(`alias`: kotlin.String, `amountDuffs`: kotlin.String, `accountIndex`: kotlin.UInt, `mnemonicSeed`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(DashException) { _status ->
+    UniffiLib.INSTANCE.uniffi_dashshielded_fn_func_shield_from_asset_lock(
+        FfiConverterString.lower(`alias`),FfiConverterString.lower(`amountDuffs`),FfiConverterUInt.lower(`accountIndex`),FfiConverterString.lower(`mnemonicSeed`),_status)
+}
+    )
+    }
+    
+
+    @Throws(DashException::class) fun `shieldedWithdraw`(`alias`: kotlin.String, `toCoreAddress`: kotlin.String, `amountCredits`: kotlin.String, `coreFeePerByte`: kotlin.UInt, `mnemonicSeed`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(DashException) { _status ->
+    UniffiLib.INSTANCE.uniffi_dashshielded_fn_func_shielded_withdraw(
+        FfiConverterString.lower(`alias`),FfiConverterString.lower(`toCoreAddress`),FfiConverterString.lower(`amountCredits`),FfiConverterUInt.lower(`coreFeePerByte`),FfiConverterString.lower(`mnemonicSeed`),_status)
+}
+    )
+    }
+    
+
+    @Throws(DashException::class) fun `startCoreSync`(`alias`: kotlin.String, `fromHeight`: kotlin.UInt)
+        = 
+    uniffiRustCallWithError(DashException) { _status ->
+    UniffiLib.INSTANCE.uniffi_dashshielded_fn_func_start_core_sync(
+        FfiConverterString.lower(`alias`),FfiConverterUInt.lower(`fromHeight`),_status)
 }
     
     
@@ -1651,6 +1905,26 @@ public object FfiConverterSequenceTypeTransaction: FfiConverterRustBuffer<List<T
         FfiConverterString.lower(`alias`),_status)
 }
     
+    
+
+    @Throws(DashException::class) fun `trackedAssetLocks`(`alias`: kotlin.String): List<AssetLock> {
+            return FfiConverterSequenceTypeAssetLock.lift(
+    uniffiRustCallWithError(DashException) { _status ->
+    UniffiLib.INSTANCE.uniffi_dashshielded_fn_func_tracked_asset_locks(
+        FfiConverterString.lower(`alias`),_status)
+}
+    )
+    }
+    
+
+    @Throws(DashException::class) fun `unshield`(`alias`: kotlin.String, `toAddress`: kotlin.String, `amountCredits`: kotlin.String, `mnemonicSeed`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(DashException) { _status ->
+    UniffiLib.INSTANCE.uniffi_dashshielded_fn_func_unshield(
+        FfiConverterString.lower(`alias`),FfiConverterString.lower(`toAddress`),FfiConverterString.lower(`amountCredits`),FfiConverterString.lower(`mnemonicSeed`),_status)
+}
+    )
+    }
     
 
     @Throws(DashException::class) fun `warmUpProver`()

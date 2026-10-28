@@ -76,13 +76,39 @@ export interface ErrorEvent {
 }
 
 export interface SynchronizerCallbacks {
-  onBalanceChanged(balance: BalanceEvent): void
-  onStatusChanged(status: StatusEvent): void
-  onTransactionsChanged(transactions: TransactionEvent): void
-  onUpdate(event: UpdateEvent): void
-  onError(error: ErrorEvent): void
+  onBalanceChanged: (balance: BalanceEvent) => void
+  onStatusChanged: (status: StatusEvent) => void
+  onTransactionsChanged: (transactions: TransactionEvent) => void
+  onUpdate: (event: UpdateEvent) => void
+  onError: (error: ErrorEvent) => void
 }
 
 export interface Addresses {
   shieldedAddress: string
+}
+
+/** Transparent (L1) balance in duffs, with the SPV client's header height. */
+export interface CoreBalance {
+  confirmedDuffs: string
+  unconfirmedDuffs: string
+  totalDuffs: string
+  syncedHeight: number
+}
+
+/**
+ * One asset lock the wallet is tracking. `status` runs `built`, `broadcast`,
+ * `instantSendLocked` in the native casing `instant_send_locked`,
+ * `chain_locked`, then `consumed`. Anything short of `consumed` is value in a
+ * lock that never became a note, which `resumeShieldFromAssetLock` takes.
+ *
+ * A lock rebuilt from the wallet's chain records in a later process reads
+ * `recovered_from_chain`: Core has finalized it, and the wallet cannot tell
+ * locally whether Platform already consumed it. Resuming one is how a host
+ * finds out. A stranded lock shields; a spent one returns an error, moves no
+ * value and keeps this status.
+ */
+export interface AssetLock {
+  txid: string
+  vout: number
+  status: string
 }

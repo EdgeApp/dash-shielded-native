@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Weak};
 
 use rs_sdk_trusted_context_provider::TrustedHttpContextProvider;
 use dash_sdk::sdk::{Address as SdkAddress, AddressList};
@@ -101,6 +101,10 @@ pub struct ClientSlot {
     /// shielded coordinator that drives note scanning.
     pub manager: Option<Arc<Manager>>,
     pub wallet: Option<Arc<PlatformWallet>>,
+    /// The wallet store, observed without keeping it open. The store claims
+    /// its file for the whole process until its last reference drops, so
+    /// `stop` checks this to prove the alias can be opened again.
+    store: Weak<ShieldedCapablePersister>,
     /// Per-alias state directory, reused by the Core SPV client for its own
     /// header/filter storage so both layers stay under one wallet folder.
     pub db_dir: PathBuf,
@@ -431,11 +435,12 @@ pub async fn initialize(
 
     let inner = SqlitePersister::open(SqlitePersisterConfig::new(db_dir.join("wallet.db")))
         .map_err(|e| format!("open wallet store: {e}"))?;
-    let persister = ShieldedCapablePersister { inner };
+    let persister = Arc::new(ShieldedCapablePersister { inner });
+    let store = Arc::downgrade(&persister);
 
     let manager = Arc::new(Manager::new(
         Arc::new(sdk),
-        Arc::new(persister),
+        persister,
         Arc::new(SilentEventHandler) as Arc<dyn PlatformEventHandler>,
     ));
 
@@ -557,6 +562,7 @@ pub async fn initialize(
             proposals: HashMap::new(),
             manager: Some(manager),
             wallet: Some(wallet),
+            store,
             db_dir,
             total_scanned: 0,
             network_block_height: 0,
@@ -572,10 +578,16 @@ pub async fn stop(alias: String) -> WalletResult<String> {
     // the timer entry panics with "A Tokio 1.x context was found, but it is
     // being shutdown". `shutdown` drains every sync pass and joins the worker
     // threads first, so nothing is dropped while a task can still run.
-    let manager = {
-        let mut clients = CLIENTS.lock().await;
-        clients.remove(&alias).and_then(|slot| slot.manager)
+    let Some(slot) = CLIENTS.lock().await.remove(&alias) else {
+        return Ok("STOPPED".to_string());
     };
+    let ClientSlot {
+        manager,
+        wallet,
+        store,
+        ..
+    } = slot;
+    drop(wallet);
 
     if let Some(manager) = manager {
         manager.shielded_sync_arc().stop();
@@ -583,9 +595,26 @@ pub async fn stop(alias: String) -> WalletResult<String> {
         // report marks any worker that outlived its budget. That means the
         // close was not clean, so report a failure instead of "STOPPED".
         let report = manager.shutdown().await;
+        // The manager's wallet map and the wallets in it reference each other,
+        // so dropping the manager alone leaves the wallet store open for the
+        // life of the process, and reopening this alias then fails with "a
+        // SqlitePersister is already open". Removing each wallet breaks that
+        // cycle before the manager goes.
+        for id in manager.wallet_ids().await {
+            manager
+                .remove_wallet(&id)
+                .await
+                .map_err(|e| format!("stop {alias}: remove wallet: {e}"))?;
+        }
+        drop(manager);
         if !report.all_clean() {
             return Err(format!("stop {alias}: shutdown not clean: {report:?}"));
         }
+    }
+    if store.strong_count() > 0 {
+        return Err(format!(
+            "stop {alias}: wallet store still open after shutdown, so it cannot be reopened"
+        ));
     }
 
     Ok("STOPPED".to_string())

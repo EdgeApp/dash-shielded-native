@@ -30,7 +30,7 @@ async function main(): Promise<void> {
     throw new Error(`derived address failed validation: ${address}`)
   }
 
-  const synchronizer = await io.makeSynchronizer({
+  const synchronizerOptions = {
     mnemonicSeed: mnemonic,
     account: 0,
     alias: 'smoke',
@@ -38,7 +38,8 @@ async function main(): Promise<void> {
     dataDir: documentDirectory,
     defaultHost: 'seed-1.testnet.networks.dash.org',
     defaultPort: 1443
-  })
+  } as const
+  const synchronizer = await io.makeSynchronizer(synchronizerOptions)
   const derived = await synchronizer.deriveShieldedAddress()
   if (derived.shieldedAddress !== address) {
     throw new Error(`address mismatch ${derived.shieldedAddress} vs ${address}`)
@@ -61,9 +62,15 @@ async function main(): Promise<void> {
     throw new Error('prover did not become ready after warm-up')
   }
 
+  await synchronizer.stop()
+
+  // Stopping has to release the wallet store, or this alias cannot be opened
+  // again until the process exits.
+  const reopened = await io.makeSynchronizer(synchronizerOptions)
+  await reopened.stop()
+
   console.log('smoke-node ok')
   console.log(JSON.stringify({ address, viewing, proverMs }, null, 2))
-  await synchronizer.stop()
 }
 
 main().catch((error: unknown) => {

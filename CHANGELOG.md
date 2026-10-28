@@ -11,6 +11,7 @@
 - added: Asset locks from an earlier run are listed and resume after a restart
 - changed: Build against dashpay/platform v5.0.1 with Rust 1.98.1
 - changed: Stopping a wallet returns an error when its sync workers did not shut down cleanly
+- fixed: A stopped wallet can be opened again in the same process
 - fixed: Shielded spends after the first no longer fail for lack of an anchor
 - fixed: Testnet reaches DAPI on port 1443 instead of an unreachable 443
 - fixed: The macOS prebuild loads instead of being killed at require
